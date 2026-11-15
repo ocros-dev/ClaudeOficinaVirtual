@@ -31,14 +31,25 @@
   aside { display:flex; flex-direction:column; gap:16px; min-width:0; }
   .box { background:var(--panel); border:2px solid var(--line); padding:12px; }
   aside h2 { font-size:10px; margin:0 0 10px; }
-  #log { max-height:140px; overflow:auto; }
-  /* Editor de aspecto */
+  aside { position:sticky; top:16px; max-height:calc(100vh - 32px); }
+  aside .box { display:flex; flex-direction:column; min-height:0; max-height:100%; }
+  #list { flex:none; }
+  #log { flex:1; min-height:80px; overflow-y:auto; overflow-x:hidden; overflow-wrap:anywhere; }
+  .log-edit { margin-top:8px; }
+  /* Editor de aspecto: a lo ancho, debajo de la línea de tiempo */
+  #editor { display:grid; grid-template-columns:auto 1fr; grid-template-areas:"head head" "top fields" "actions actions"; column-gap:20px; }
   #editor[hidden] { display:none; }
+  #editor .ed-head { grid-area:head; }
+  #editor .ed-top { grid-area:top; flex-direction:column; align-items:flex-start; align-self:start; }
+  #editor .ed-fields { grid-area:fields; display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); column-gap:20px; align-content:start; }
+  #editor .ed-actions { grid-area:actions; }
+  @media (max-width: 900px) { aside { position:static; max-height:none; } #log { max-height:240px; } }
+  @media (max-width: 700px) { #editor { grid-template-columns:1fr; grid-template-areas:"head" "top" "fields" "actions"; } }
   .ed-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
   .ed-head h2 { margin:0; font-size:9px; line-height:1.5; }
   .ed-name { color:#f5c542; }
   .ed-top { display:flex; gap:12px; align-items:center; margin:12px 0; }
-  .ed-preview { width:100px; height:120px; image-rendering:pixelated; flex:none;
+  .ed-preview { width:120px; height:144px; image-rendering:pixelated; flex:none;
                 background:repeating-conic-gradient(#2a2438 0 25%, #241f33 0 50%) 0 0 / 20px 20px; border:2px solid var(--line); }
   .ed-view { display:flex; flex-direction:column; gap:6px; min-width:0; }
   .ed-row { display:flex; flex-wrap:wrap; gap:4px; }
@@ -139,14 +150,15 @@
       <canvas id="tl"></canvas>
       <div id="tl-legend"></div>
     </section>
+    <section id="editor" class="box" hidden></section>
   </div>
   <aside>
     <div class="box">
       <h2>AGENTES</h2>
       <div id="list"></div>
       <div id="log">Haz clic en un agente (en la lista o en la oficina) para ver su actividad y editar su aspecto.</div>
+      <button id="btn-goto-editor" class="btn sm log-edit" hidden>✎ editar aspecto ↓</button>
     </div>
-    <section id="editor" class="box" hidden></section>
   </aside>
 </main>
 <dialog id="dlg">

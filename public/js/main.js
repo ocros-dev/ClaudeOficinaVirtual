@@ -401,10 +401,14 @@ function renderList() {
   const a = selected && agents[selected];
   const el = document.getElementById('log');
   if (a) editor.open(baseOf(a.name)); else editor.close();
+  document.getElementById('btn-goto-editor').hidden = !a;
   if (!a) { el.textContent = 'Haz clic en un agente (en la lista o en la oficina) para ver su actividad y editar su aspecto.'; return; }
   const lines = a.data.log.map(l => `${new Date(l.t).toLocaleTimeString()} ${esc(l.text)}`).join('<br>') || 'Sin actividad todavía.';
   el.innerHTML = `<b>${esc(a.name)}</b>${a.data.task ? '<br>Tarea: ' + esc(a.data.task) : ''}<br><br>${lines}`;
 }
+// Botón fijo (fuera del log, que se repinta a menudo) para ir al editor
+document.getElementById('btn-goto-editor').addEventListener('click', () =>
+  document.getElementById('editor').scrollIntoView({ behavior: 'smooth', block: 'start' }));
 document.getElementById('list').addEventListener('click', e => {
   const r = e.target.closest('.row'); if (!r) return;
   selected = r.dataset.n; renderList();
