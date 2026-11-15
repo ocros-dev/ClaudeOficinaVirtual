@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "oficina",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "oficina.server"],
+      "port": 3017
+    },
+    {
+      "name": "oficina-dev",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "oficina.server"],
+      "port": 3021,
+      "env": { "OFFICE_PORT": "3021" }
+    }
+  ]
+}
