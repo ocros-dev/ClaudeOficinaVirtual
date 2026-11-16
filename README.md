@@ -73,14 +73,15 @@ Para cambiar los puestos predefinidos, edita `DESKS` en `public/js/map.js`.
 Selecciona un agente (en la lista o haciendo clic sobre él en la oficina) y aparece el **editor** en la columna derecha:
 
 - **Vista previa** animada: gírala con ◄ ▲ ▼ ► y elige quieto, caminando o tecleando.
-- **Peinado**: corto, largo, coleta, rizado o calvo.
-- **Colores** de pelo, piel, camisa, pantalón, zapatos y accesorio (paleta o cualquier otro color con el selector).
-- **Accesorios**: gafas, auriculares, gorra, boina y corbata (solo un sombrero a la vez).
+- **Personaje**: aplica de un clic una skin completa de anime o videojuego (Goku, Vegeta, Naruto, Kakashi, Itachi, Ichigo, Luffy, Sailor Moon, Dante, Cloud, Link, Mario). Después puedes retocarla.
+- **Peinado**: corto, largo, coleta, rizado, calvo, en punta, llamarada o moños.
+- **Colores** de pelo, piel, ojos, camisa, pantalón, zapatos, accesorio y color 2 (paleta o cualquier otro color con el selector).
+- **Accesorios**: gafas, auriculares, gorra, boina, corbata, sombrero de paja, gorro puntiagudo, bandana ninja, máscara, bigote, espadón, cinturón, armadura, abrigo largo, nubes, peto, lazo marinero y falda (solo un sombrero a la vez).
 - **🎲 azar** para una combinación aleatoria y **↺ original** para volver al aspecto por defecto.
 
 Los cambios se ven al momento en la oficina. **✓ guardar** los conserva y **descartar** los deshace. Se guardan en `~/.oficina-virtual/looks.json`, compartido por el `.exe` y por `python app.py`. Si hay dos agentes del mismo tipo a la vez (`backend-expert#2`), comparten el aspecto.
 
-El aspecto por defecto de cada rol está en `LOOKS`, dentro de `public/js/main.js`.
+Las skins están en `PRESETS`, dentro de `public/js/presets.js`, y `AGENT_SKINS` decide cuál lleva cada agente por defecto. Los agentes sin skin asignada usan `LOOKS`, en `public/js/main.js`.
 
 ## Funciones
 

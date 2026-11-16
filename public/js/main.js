@@ -1,5 +1,6 @@
 // Oficina virtual — bucle principal: estado en vivo, movimiento, dibujo y panel.
 import { makeCharacter } from './sprites.js';
+import { PRESETS, AGENT_SKINS } from './presets.js';
 import {
   TS, W, H, ROOMS, DESKS, GUEST_DESKS, PROPS, SPOTS, ENTRANCE, corridorTiles,
   buildWorld, findPath, drawBackground, drawLiveWall, drawProp, propBaseline,
@@ -49,8 +50,10 @@ function colorOf(name) { return COLORS[name] || `hsl(${hash(name) % 360} 60% 60%
 // Aspecto por defecto (derivado del nombre) y aspecto personalizado guardado con el editor
 function defaultLook(name) {
   const h = hash(name), l = LOOKS[name] || {};
+  const skin = PRESETS[AGENT_SKINS[name]];
+  if (skin) return { accent2: '#2a3a8a', eyes: '#1b1426', ...skin.look, accessory: [...skin.look.accessory] };
   return {
-    hairStyle: 'corto',
+    hairStyle: 'corto', accent2: '#2a3a8a', eyes: '#1b1426',
     hair: l.hair || HAIR[h % HAIR.length], skin: SKIN[(h >> 3) % SKIN.length],
     shirt: l.shirt || COLORS[name] || ['#8a8aa0', '#c08a50', '#6a9a5a', '#a05a8a', '#5a7aa0'][h % 5],
     pants: l.pants || PANTS[(h >> 5) % PANTS.length], shoes: '#2a1a14',
@@ -279,10 +282,10 @@ function drawAgent(a) {
     if (working && !slow && Math.random() < 0.08) sfx.type();
     if (d.face === 'up') {
       const f = working ? a.frames.typeUp[slow ? 0 : ph] : a.frames.down.stand;
-      g.drawImage(f, 0, 0, 12, 13, x - 6, y - 18 + (working && slow && ph ? 1 : 0), 12, 13);
+      g.drawImage(f, 0, 0, 16, 16, x - 8, y - 21 + (working && slow && ph ? 1 : 0), 16, 16);
     } else {
       const f = working ? a.frames.typeDown[slow ? 0 : ph] : a.frames.down.stand;
-      g.drawImage(f, 0, 0, 12, 13, x - 6, y - 9, 12, 13);
+      g.drawImage(f, 0, 0, 16, 16, x - 8, y - 12, 16, 16);
     }
     return;
   }
@@ -290,7 +293,7 @@ function drawAgent(a) {
   const moving = a.route.length > 0;
   const ph = moving ? ['a', 'stand', 'b', 'stand'][Math.floor(a.walkT / 0.13) % 4] : 'stand';
   const bob = moving && ph !== 'stand' ? 1 : 0;
-  g.drawImage(a.frames[a.dir][ph], x - 6, y - 17 - bob);
+  g.drawImage(a.frames[a.dir][ph], x - 8, y - 20 - bob);   // lienzo 16×21 con margen de 2 px a los lados y 3 arriba
 }
 
 function headY(a) {

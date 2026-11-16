@@ -36,9 +36,10 @@ LOOKS_FILE = DATA_DIR / "looks.json"
 
 # ---- Aspecto personalizado de los agentes ------------------------------------
 HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
-LOOK_COLORS = ("shirt", "hair", "skin", "pants", "shoes", "accent")
-HAIR_STYLES = {"corto", "largo", "coleta", "rizado", "calvo"}
-ACCESSORIES = {"glasses", "headset", "cap", "beret", "tie"}
+LOOK_COLORS = ("shirt", "hair", "skin", "pants", "shoes", "accent", "accent2", "eyes")
+HAIR_STYLES = {"corto", "largo", "coleta", "rizado", "calvo", "puntas", "llama", "odango"}
+ACCESSORIES = {"glasses", "headset", "cap", "beret", "tie", "strawhat", "elfcap", "bandana", "mask", "mustache",
+               "sword", "belt", "armor", "coat", "clouds", "overalls", "bow", "skirt"}
 looks_lock = threading.Lock()
 
 
