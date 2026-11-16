@@ -50,7 +50,7 @@ function colorOf(name) { return COLORS[name] || `hsl(${hash(name) % 360} 60% 60%
 function defaultLook(name) {
   const h = hash(name), l = LOOKS[name] || {};
   return {
-    hairStyle: 'corto',
+    hairStyle: 'corto', eyes: 'normal', iris: '#3d7bff',
     hair: l.hair || HAIR[h % HAIR.length], skin: SKIN[(h >> 3) % SKIN.length],
     shirt: l.shirt || COLORS[name] || ['#8a8aa0', '#c08a50', '#6a9a5a', '#a05a8a', '#5a7aa0'][h % 5],
     pants: l.pants || PANTS[(h >> 5) % PANTS.length], shoes: '#2a1a14',

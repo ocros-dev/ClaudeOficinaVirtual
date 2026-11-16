@@ -73,9 +73,11 @@ Para cambiar los puestos predefinidos, edita `DESKS` en `public/js/map.js`.
 Selecciona un agente (en la lista o haciendo clic sobre él en la oficina) y aparece el **editor** en la columna derecha:
 
 - **Vista previa** animada: gírala con ◄ ▲ ▼ ► y elige quieto, caminando o tecleando.
-- **Peinado**: corto, largo, coleta, rizado o calvo.
+- **Estilo anime**: 8 estilos listos con un clic (héroe, ninja, samurái, estudiante, maga, idol, rival y piloto). Son arquetipos originales; después puedes retocar cualquier detalle.
+- **Peinado**: corto, largo, coleta, rizado, calvo y los de estilo anime: puntas, coletas y princesa.
+- **Ojos**: normales o anime (grandes, con brillo y el color de iris que elijas).
 - **Colores** de pelo, piel, camisa, pantalón, zapatos y accesorio (paleta o cualquier otro color con el selector).
-- **Accesorios**: gafas, auriculares, gorra, boina y corbata (solo un sombrero a la vez).
+- **Accesorios**: gafas, auriculares, gorra, boina, corbata, cinta, lazo y bufanda (solo uno a la vez entre gorra, boina y cinta).
 - **🎲 azar** para una combinación aleatoria y **↺ original** para volver al aspecto por defecto.
 
 Los cambios se ven al momento en la oficina. **✓ guardar** los conserva y **descartar** los deshace. Se guardan en `~/.oficina-virtual/looks.json`, compartido por el `.exe` y por `python app.py`. Si hay dos agentes del mismo tipo a la vez (`backend-expert#2`), comparten el aspecto.

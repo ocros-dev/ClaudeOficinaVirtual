@@ -1,5 +1,5 @@
 // Editor del aspecto de un agente: peinado, colores y accesorios, con vista previa animada.
-import { makeCharacter, HAIR_STYLES, ACCESSORY_LIST } from './sprites.js';
+import { makeCharacter, HAIR_STYLES, ACCESSORY_LIST, EYE_STYLES, ANIME_PRESETS } from './sprites.js';
 
 const HAIR_COLORS = ['#1a1a1a', '#2b1d14', '#6b3e1e', '#a0522d', '#d9b26a', '#f0dc8c', '#8a2a1a', '#e05d3a',
                      '#c8c8c8', '#f4f4f4', '#4a2a5a', '#3d7bff', '#45d4c8', '#5fd068', '#f08fd0', '#7a2430'];
@@ -9,8 +9,11 @@ const CLOTH_COLORS = ['#1b1426', '#2d2a40', '#3a4a6a', '#4a3a2a', '#7a2430', '#e
                       '#e8e8ee', '#8a8aa0'];
 
 const FIELDS = [
+  { key: 'preset',    label: 'ESTILO ANIME', type: 'preset', options: ANIME_PRESETS },
   { key: 'hairStyle', label: 'PEINADO', type: 'choice', options: Object.entries(HAIR_STYLES).map(([id, s]) => ({ id, label: s.label })) },
   { key: 'hair',      label: 'PELO',     type: 'color', palette: HAIR_COLORS },
+  { key: 'eyes',      label: 'OJOS',     type: 'choice', options: Object.entries(EYE_STYLES).map(([id, s]) => ({ id, label: s.label })) },
+  { key: 'iris',      label: 'COLOR DE OJOS (ANIME)', type: 'color', palette: CLOTH_COLORS },
   { key: 'skin',      label: 'PIEL',     type: 'color', palette: SKIN_COLORS, noCustom: false },
   { key: 'shirt',     label: 'CAMISA',   type: 'color', palette: CLOTH_COLORS },
   { key: 'pants',     label: 'PANTALÓN', type: 'color', palette: CLOTH_COLORS },
@@ -54,6 +57,10 @@ export function createEditor(root, { lookOf, isCustom, labelOf, onPreview, onSav
 
   function fieldHtml(f) {
     const v = draft[f.key];
+    if (f.type === 'preset') return f.options.map(o => {
+      const on = Object.entries(o.look).every(([k, val]) => same(draft[k], val));
+      return `<button class="chip ${on ? 'on' : ''}" data-preset="${o.id}" title="Aplicar estilo ${o.label}">${o.label}</button>`;
+    }).join('');
     if (f.type === 'choice') return f.options.map(o =>
       `<button class="chip ${v === o.id ? 'on' : ''}" data-k="${f.key}" data-v="${o.id}">${o.label}</button>`).join('');
     if (f.type === 'multi') return f.options.map(o =>
@@ -101,6 +108,11 @@ export function createEditor(root, { lookOf, isCustom, labelOf, onPreview, onSav
     if (!b || !name) return;
     if (b.dataset.dir) { dir = b.dataset.dir; if (anim === 'type') anim = 'stand'; render(); }
     else if (b.dataset.anim) { anim = b.dataset.anim; render(); }
+    else if (b.dataset.preset) {
+      const p = ANIME_PRESETS.find(o => o.id === b.dataset.preset);
+      draft = { ...draft, ...clone(p.look) };
+      change('hairStyle', draft.hairStyle);
+    }
     else if (b.dataset.toggle) {
       const id = b.dataset.toggle, opt = ACCESSORY_LIST.find(o => o.id === id);
       let acc = [...(draft.accessory || [])];
@@ -115,6 +127,7 @@ export function createEditor(root, { lookOf, isCustom, labelOf, onPreview, onSav
     else if (b.classList.contains('ed-random')) {
       draft = {
         ...draft, hairStyle: pick(Object.keys(HAIR_STYLES)), hair: pick(HAIR_COLORS), skin: pick(SKIN_COLORS),
+        eyes: pick(Object.keys(EYE_STYLES)), iris: pick(CLOTH_COLORS),
         shirt: pick(CLOTH_COLORS), pants: pick(CLOTH_COLORS), shoes: pick(CLOTH_COLORS), accent: pick(CLOTH_COLORS),
         accessory: Math.random() < 0.6 ? [pick(ACCESSORY_LIST).id] : [],
       };

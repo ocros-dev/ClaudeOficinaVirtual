@@ -3,6 +3,7 @@
 //   .  transparente   o  contorno   e  ojos     h  pelo     s  piel
 //   c  camisa         C  sombra     p  pantalón k  zapatos  w  blanco
 //   g  gafas          m  auriculares a  accesorio A  sombra del accesorio
+//   i  iris (ojos anime)
 
 const HEAD = {
   down: [
@@ -102,6 +103,21 @@ const ACCESSORIES = {
     right: [...band(0, 2, 9, 'a'), ...band(1, 1, 10, 'a'), [2, 2, 'A'], [1, 2, 'A']],
     up:    [...band(0, 2, 9, 'a'), ...band(1, 1, 10, 'a')],
   },
+  headband: {   // cinta en la frente, con las puntas sueltas detrás
+    down:  [...band(2, 1, 10, 'a'), [11, 3, 'A']],
+    right: [...band(2, 1, 10, 'a'), [0, 3, 'A'], [0, 4, 'A']],
+    up:    [...band(2, 1, 10, 'a'), [5, 3, 'A'], [6, 3, 'A'], [5, 4, 'A'], [6, 4, 'A']],
+  },
+  ribbon: {     // lazo grande en el pelo
+    down:  [[8, 0, 'a'], [10, 0, 'a'], [9, 0, 'A'], [8, 1, 'a'], [10, 1, 'a'], [9, 1, 'A']],
+    right: [[1, 0, 'a'], [3, 0, 'a'], [2, 0, 'A'], [1, 1, 'a'], [3, 1, 'a'], [2, 1, 'A']],
+    up:    [[1, 0, 'a'], [3, 0, 'a'], [2, 0, 'A'], [1, 1, 'a'], [3, 1, 'a'], [2, 1, 'A']],
+  },
+  scarf: {      // bufanda con el extremo al viento
+    down:  [...band(8, 2, 9, 'a'), [8, 9, 'A'], [8, 10, 'A']],
+    right: [...band(8, 3, 8, 'a'), [2, 8, 'A'], [1, 9, 'A'], [0, 9, 'A']],
+    up:    [...band(8, 2, 9, 'a'), [3, 9, 'A'], [3, 10, 'A']],
+  },
   tie: {
     down:  [[5, 8, 'w'], [6, 8, 'w'], [5, 9, 'a'], [6, 9, 'a'], [5, 10, 'a'], [6, 10, 'a'], [5, 11, 'A']],
     right: [], up: [],
@@ -114,6 +130,8 @@ function compose(head, body, legs) { return [...head, ...body, ...legs]; }
 // Píxeles extra de pelo por dirección ('h' pelo, 'H' sombra del pelo).
 function px(list, xs, ys, k) { for (const x of xs) for (const y of ys) list.push([x, y, k]); return list; }
 const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
+const SPIKES = [[2, 0, 'h'], [4, 0, 'h'], [5, 0, 'H'], [7, 0, 'h'], [9, 0, 'h'],
+                [1, 1, 'h'], [10, 1, 'h'], [0, 1, 'H'], [11, 1, 'H'], [1, 2, 'h'], [10, 2, 'h'], [0, 3, 'H'], [11, 3, 'H']];
 const AFRO = px(px(px([], range(2, 9), [0], 'h'), [0, 11], range(1, 4), 'H'), [1, 10], range(1, 5), 'h');
 export const HAIR_STYLES = {
   corto:  { label: 'corto',  extras: { down: [], up: [], right: [] } },
@@ -129,6 +147,22 @@ export const HAIR_STYLES = {
   } },
   rizado: { label: 'rizado', extras: { down: AFRO, up: AFRO, right: AFRO } },
   calvo:  { label: 'calvo',  bald: true, extras: { down: [], up: [], right: [] } },
+  // ---- Estilo anime ----
+  puntas: { label: 'puntas', extras: {           // pelo de punta con flequillo dentado
+    down:  [...SPIKES, [3, 3, 'h'], [5, 3, 'h'], [6, 3, 'h'], [8, 3, 'h']],
+    up:    [...SPIKES, [2, 6, 'H'], [9, 6, 'H']],
+    right: [...SPIKES, [6, 3, 'h'], [8, 3, 'h'], [0, 4, 'H'], [1, 5, 'H']],
+  } },
+  coletas: { label: 'coletas', extras: {         // dos coletas a los lados
+    down:  px(px(px([], [0, 11], range(3, 9), 'h'), [1, 10], range(4, 8), 'H'), [0, 11], [10], 'H'),
+    up:    px(px(px([], [0, 11], range(3, 9), 'h'), [1, 10], range(4, 8), 'H'), [0, 11], [10], 'H'),
+    right: px(px([], [0, 1], range(3, 9), 'h'), [0], [10], 'H'),
+  } },
+  princesa: { label: 'princesa', extras: {       // melena larga con flequillo recto
+    down:  [...px(px([], [1, 10], range(3, 11), 'h'), [0, 11], range(4, 10), 'H'), ...px([], range(2, 9), [3], 'h')],
+    up:    px(px([], range(2, 9), range(5, 11), 'h'), [1, 10], range(4, 11), 'H'),
+    right: [...px(px([], [1, 2, 3], range(3, 11), 'h'), [0], range(4, 10), 'H'), ...px([], range(6, 9), [3], 'h')],
+  } },
 };
 
 function styleHead(head, style) {
@@ -139,6 +173,27 @@ function styleHead(head, style) {
 export const ACCESSORY_LIST = [
   { id: 'glasses', label: 'gafas' }, { id: 'headset', label: 'auriculares' }, { id: 'cap', label: 'gorra', hat: true },
   { id: 'beret', label: 'boina', hat: true }, { id: 'tie', label: 'corbata' },
+  { id: 'headband', label: 'cinta', hat: true }, { id: 'ribbon', label: 'lazo' }, { id: 'scarf', label: 'bufanda' },
+];
+
+// Ojos: 'normal' (1 píxel) o 'anime' (grandes, con iris de color y brillo)
+export const EYE_STYLES = { normal: { label: 'normales' }, anime: { label: 'anime' } };
+const ANIME_EYES = {
+  down:  [[3, 4, 'e'], [4, 4, 'e'], [7, 4, 'e'], [8, 4, 'e'], [3, 5, 'w'], [4, 5, 'i'], [7, 5, 'i'], [8, 5, 'w']],
+  right: [[8, 4, 'e'], [9, 4, 'e'], [8, 5, 'i'], [9, 5, 'w']],
+  up: [],
+};
+
+// Estilos anime predefinidos (arquetipos originales, no personajes concretos)
+export const ANIME_PRESETS = [
+  { id: 'heroe',   label: 'héroe',      look: { hairStyle: 'puntas', hair: '#f5a142', eyes: 'anime', iris: '#3d7bff', shirt: '#e84545', pants: '#2d2a40', shoes: '#1b1426', accessory: ['scarf'], accent: '#f5d442' } },
+  { id: 'ninja',   label: 'ninja',      look: { hairStyle: 'puntas', hair: '#2d2a40', eyes: 'anime', iris: '#9b6cf0', shirt: '#2d2a40', pants: '#1b1426', shoes: '#1b1426', accessory: ['headband', 'scarf'], accent: '#7a2430' } },
+  { id: 'samurai', label: 'samurái',    look: { hairStyle: 'coleta', hair: '#1a1a1a', eyes: 'anime', iris: '#6b3e1e', shirt: '#3a4a6a', pants: '#e8e8ee', shoes: '#4a3a2a', accessory: ['headband'], accent: '#e8e8ee' } },
+  { id: 'estudiante', label: 'estudiante', look: { hairStyle: 'princesa', hair: '#1a1a1a', eyes: 'anime', iris: '#4a2a5a', shirt: '#e8e8ee', pants: '#2d3d7a', shoes: '#4a3a2a', accessory: ['tie'], accent: '#c03030' } },
+  { id: 'maga',    label: 'maga',       look: { hairStyle: 'coletas', hair: '#f08fd0', eyes: 'anime', iris: '#9b6cf0', shirt: '#9b6cf0', pants: '#4a2a5a', shoes: '#1b1426', accessory: ['ribbon'], accent: '#f5d442' } },
+  { id: 'idol',    label: 'idol',       look: { hairStyle: 'coletas', hair: '#f0dc8c', eyes: 'anime', iris: '#e84545', shirt: '#f08fd0', pants: '#e8e8ee', shoes: '#e84545', accessory: ['ribbon', 'headset'], accent: '#e84545' } },
+  { id: 'rival',   label: 'rival',      look: { hairStyle: 'largo', hair: '#e8e8ee', eyes: 'anime', iris: '#e84545', shirt: '#1b1426', pants: '#2d2a40', shoes: '#1b1426', accessory: [], accent: '#7a2430' } },
+  { id: 'piloto',  label: 'piloto',     look: { hairStyle: 'puntas', hair: '#4fb0ff', eyes: 'anime', iris: '#45d4c8', shirt: '#e8e8ee', pants: '#e84545', shoes: '#2d2a40', accessory: ['headset'], accent: '#f5a142' } },
 ];
 
 function paint(rows, pal, extras, mirror) {
@@ -162,18 +217,19 @@ export function shade(hex, amt) {
 }
 
 // Genera todos los fotogramas de un personaje.
-// look = { shirt, hair, hairStyle, skin, pants, shoes, accessory: [..], accent }
+// look = { shirt, hair, hairStyle, skin, pants, shoes, accessory: [..], accent, eyes, iris }
 export function makeCharacter(look) {
   const pal = {
     o: '#1b1426', e: '#1b1426', w: '#f4f4f4',
     h: look.hair, H: shade(look.hair, -35), s: look.skin, c: look.shirt, C: shade(look.shirt, -40),
     p: look.pants, k: look.shoes || '#2a1a14', g: '#101018', m: '#2e2e3a',
-    a: look.accent || '#c03030', A: shade(look.accent || '#c03030', -45),
+    a: look.accent || '#c03030', A: shade(look.accent || '#c03030', -45), i: look.iris || '#3d7bff',
   };
   const style = HAIR_STYLES[look.hairStyle] ? look.hairStyle : 'corto';
   const accs = [].concat(look.accessory || []);
   // Primero el peinado y encima los accesorios (una gorra tapa el pelo)
-  const extrasFor = dir => [...HAIR_STYLES[style].extras[dir],
+  const eyes = look.eyes === 'anime' ? ANIME_EYES : null;
+  const extrasFor = dir => [...HAIR_STYLES[style].extras[dir], ...(eyes ? eyes[dir] : []),
     ...accs.flatMap(a => (ACCESSORIES[a] && ACCESSORIES[a][dir]) || [])];
   const head = dir => styleHead(HEAD[dir], style);
 
