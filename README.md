@@ -82,7 +82,7 @@ Selecciona un agente (en la lista o haciendo clic sobre él en la oficina) y apa
 
 Los cambios se ven al momento en la oficina. **✓ guardar** los conserva y **descartar** los deshace. Se guardan en `~/.oficina-virtual/looks.json`, compartido por el `.exe` y por `python app.py`. Si hay dos agentes del mismo tipo a la vez (`backend-expert#2`), comparten el aspecto.
 
-El aspecto por defecto de cada rol está en `LOOKS`, dentro de `public/js/main.js`.
+Por defecto cada agente lleva un estilo anime según su rol (`ROLE_ANIME` en `public/js/main.js`); los agentes sin rol conocido reciben uno según su nombre. Los colores base están en `LOOKS`.
 
 ## Tema «mundo RPG»
 

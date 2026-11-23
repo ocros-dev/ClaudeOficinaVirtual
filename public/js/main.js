@@ -1,5 +1,5 @@
 // Oficina virtual — bucle principal: estado en vivo, movimiento, dibujo y panel.
-import { makeCharacter } from './sprites.js';
+import { makeCharacter, ANIME_PRESETS } from './sprites.js';
 import {
   TS, W, H, ROOMS, DESKS, GUEST_DESKS, PROPS, SPOTS, ENTRANCE, corridorTiles,
   buildWorld, findPath, drawBackground, drawLiveWall, drawProp, propBaseline,
@@ -61,7 +61,18 @@ const PANTS = ['#2d2a40', '#3a4a6a', '#4a3a2a', '#2a3a3a'];
 function hash(s) { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h); }
 function colorOf(name) { return COLORS[name] || `hsl(${hash(name) % 360} 60% 60%)`; }
 // Aspecto por defecto (derivado del nombre) y aspecto personalizado guardado con el editor
+// Estilo anime por defecto de cada rol (los demás agentes reciben uno según su nombre)
+const ROLE_ANIME = {
+  'claude': 'heroe', 'product-owner': 'estudiante', 'software-architect': 'rival', 'ux-designer': 'maga',
+  'frontend-expert': 'piloto', 'backend-expert': 'ninja', 'mobile-developer': 'idol', 'data-engineer': 'estudiante',
+  'postgres-dba': 'samurai', 'devops-engineer': 'samurai', 'security-expert': 'ninja', 'qa-engineer': 'idol',
+};
 function defaultLook(name) {
+  const h = hash(name);
+  const preset = ANIME_PRESETS.find(p => p.id === ROLE_ANIME[name]) || ANIME_PRESETS[h % ANIME_PRESETS.length];
+  return { ...officeLook(name), ...preset.look };
+}
+function officeLook(name) {
   const h = hash(name), l = LOOKS[name] || {};
   return {
     hairStyle: 'corto', eyes: 'normal', iris: '#3d7bff',
