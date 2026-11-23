@@ -8,6 +8,15 @@ import {
 import { createTimeline, CATEGORIES } from './timeline.js';
 import { sfx, setSfx, setMusic } from './sound.js';
 import { createEditor } from './editor.js';
+import {
+  ZONE_NAMES, drawRpgBackground, drawRpgLive, drawRpgProp, drawCamp, drawThrone, drawVillain,
+  villainAnchor, villainTop, villainName, villainShout, newFight, hitFight, endFight, stepFight, fightOver,
+  rpgToolText, RPG_IDLE,
+} from './rpg.js';
+
+// Tema: 'office' (oficina) o 'rpg' (mundo RPG con batallas contra villanos)
+let theme = (() => { try { return localStorage.getItem('oficina.theme') === 'rpg' ? 'rpg' : 'office'; } catch { return 'office'; } })();
+const rpg = () => theme === 'rpg';
 
 const cv = document.getElementById('cv');
 const g = cv.getContext('2d');
@@ -18,7 +27,12 @@ stage.style.aspectRatio = `${W} / ${H}`;
 buildWorld();
 const bg = document.createElement('canvas');
 bg.width = W; bg.height = H;
-drawBackground(bg.getContext('2d'));
+function paintBackground() {
+  const bctx = bg.getContext('2d');
+  bctx.clearRect(0, 0, W, H);
+  (rpg() ? drawRpgBackground : drawBackground)(bctx);
+}
+paintBackground();
 
 // ---- Aspecto de cada agente ---------------------------------------------
 const COLORS = {
@@ -123,10 +137,12 @@ function createAgent(data) {
     name: data.name, data, frames: makeCharacter(lookOf(base)), color: colorOf(base),
     x: 0, y: 0, dir: 'down', route: [], goal: null, seated: false, hidden: false,
     walkT: 0, nextIdle: 0, bubble: null, seed: hash(data.name) % 97,
+    fight: data.state === 'working' ? newFight(now) : null,
     bub: Object.assign(document.createElement('div'), { className: 'bub' }),
+    vbub: Object.assign(document.createElement('div'), { className: 'bub villain' }),
     tag: Object.assign(document.createElement('div'), { className: 'tag', textContent: shortName(data.name) }),
   };
-  stage.append(a.bub, a.tag);
+  stage.append(a.bub, a.tag, a.vbub);
   if (data.state !== 'idle') { sitDown(a, deskOf(a)); }
   else if (isGuest(a.name)) { a.hidden = true; }
   else { Object.assign(a, center(pick(corridorTiles))); a.nextIdle = now + rnd(0, 3000); }
@@ -166,7 +182,7 @@ function arrive(a) {
   if (goal.kind === 'seat') { a.seated = true; a.dir = 'down'; }
   if (goal.kind === 'exit') {
     a.hidden = true; a.guestDesk = null;
-    if (a.leaving) { a.bub.remove(); a.tag.remove(); delete agents[a.name]; renderList(); }
+    if (a.leaving) { a.bub.remove(); a.tag.remove(); a.vbub.remove(); delete agents[a.name]; renderList(); }
   }
   if (goal.kind === 'spot') {
     a.bubble = goal.bubble || null;
@@ -229,9 +245,14 @@ function upsert(data, quiet) {
   const prev = a.data.state;
   a.data = data;
   a.leaving = false;
+  // Cada herramienta que usa el agente es un golpe al villano; al terminar, el villano cae
+  if (data.state === 'working') {
+    if (!a.fight || a.fight.defeatAt) a.fight = newFight(now);
+    else if (!quiet) { hitFight(a.fight, now); if (rpg()) sfx.hit(); }
+  } else if (a.fight) endFight(a.fight, now);
   if (!quiet && prev !== data.state) {
     if (data.state === 'working' && prev !== 'working') sfx.start();
-    if (data.state === 'done') sfx.done();
+    if (data.state === 'done') (rpg() ? sfx.victory : sfx.done)();
   }
   if (data.state === 'working' || data.state === 'done') {
     if (a.hidden) {
@@ -272,6 +293,21 @@ function update(a, dt) {
 function drawAgent(a) {
   const x = Math.round(a.x), y = Math.round(a.y);
   const d = a.desk;
+  if (rpg() && a.seated && d) {
+    // Mundo RPG: de pie en su campamento, luchando contra el villano
+    const dir = d.face === 'up' ? 'up' : 'down';
+    let f = a.frames.down.stand, oy = 0;
+    if (a.data.state === 'working') {
+      const lunge = a.fight && now - a.fight.lastHit < 200;
+      f = a.frames[dir][lunge ? 'a' : 'stand'];
+      oy = lunge ? (dir === 'up' ? -3 : 3) : -(Math.floor(now / 450 + a.seed) % 2);
+    } else if (a.data.state === 'done') {
+      oy = -2 * (Math.floor(now / 180) % 2);                      // saltos de victoria
+    }
+    g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(x - 4, y - 1, 8, 2);
+    g.drawImage(f, x - 6, y - 17 + oy);
+    return;
+  }
   if (a.seated && d) {
     const working = a.data.state === 'working';
     const slow = SLOW_TOOLS.test(a.data.tool || '');
@@ -294,6 +330,7 @@ function drawAgent(a) {
 }
 
 function headY(a) {
+  if (rpg()) return a.y - 17;
   if (a.seated && a.desk) return a.desk.face === 'up' ? a.y - 18 : a.y - 9;
   return a.y - 17;
 }
@@ -301,17 +338,32 @@ function headY(a) {
 function frame(t) {
   const dt = Math.min(0.05, (t - now) / 1000); now = t;
   g.drawImage(bg, 0, 0);
-  drawLiveWall(g, t);
+  (rpg() ? drawRpgLive : drawLiveWall)(g, t);
 
   const list = Object.values(agents);
   list.forEach(a => update(a, dt));
+  for (const a of list) if (a.fight) {
+    if (stepFight(a.fight, now) && rpg()) sfx.transform();
+    if (fightOver(a.fight, now)) a.fight = null;
+  }
 
   const occupant = new Map();
   for (const a of list) if (a.seated && a.desk && !a.hidden) occupant.set(a.desk, a);
 
   const items = [];
-  for (const p of PROPS) items.push({ y: propBaseline(p), draw: () => drawProp(g, p, t) });
-  for (const d of [...Object.values(DESKS), ...GUEST_DESKS]) {
+  const propDraw = rpg() ? drawRpgProp : drawProp;
+  for (const p of PROPS) items.push({ y: propBaseline(p), draw: () => propDraw(g, p, t) });
+  if (rpg()) {
+    const fightAt = new Map();
+    for (const a of list) if (a.fight && a.desk && !a.hidden) fightAt.set(a.desk, a.fight);
+    for (const d of [...Object.values(DESKS), ...GUEST_DESKS]) {
+      const fight = fightAt.get(d);
+      items.push({ y: deskBaseline(d) - 8, draw: () => drawCamp(g, d, t, { fighting: !!fight, lit: occupant.has(d) }) });
+      if (fight) items.push({ y: villainAnchor(d).y, draw: () => drawVillain(g, fight, d, now) });
+      if (d.face === 'down') items.push({ y: chairBaseline(d), draw: () => drawThrone(g, d) });
+    }
+  }
+  for (const d of rpg() ? [] : [...Object.values(DESKS), ...GUEST_DESKS]) {
     const occ = occupant.get(d);
     const screen = !occ ? { mode: 'off' } : occ.data.state === 'working' ? { mode: 'work', tool: occ.data.tool } : { mode: 'idle' };
     items.push({ y: deskBaseline(d), draw: () => drawDesk(g, d, screen, t, (d.x * 7 + d.y) % 13) });
@@ -332,15 +384,27 @@ function frame(t) {
   for (const a of list) {
     let txt = '';
     if (!a.hidden) {
-      if (a.data.state === 'working') txt = a.seated ? toolText(a.data.tool) : '🚶 ' + (a.data.task || 'voy').slice(0, 18);
-      else if (a.data.state === 'done') txt = '✓ listo';
-      else if (a.bubble && !a.route.length) txt = a.bubble;
+      if (a.data.state === 'working') txt = a.seated ? (rpg() ? rpgToolText : toolText)(a.data.tool) : '🚶 ' + (a.data.task || 'voy').slice(0, 18);
+      else if (a.data.state === 'done') txt = rpg() ? '🏆 ¡victoria!' : '✓ listo';
+      else if (a.bubble && !a.route.length) txt = rpg() ? RPG_IDLE[a.bubble] || a.bubble : a.bubble;
+    }
+    // Grito del villano al aparecer o al transformarse
+    const f = a.fight, shout = rpg() && f && !f.defeatAt && a.desk && !a.hidden && now - f.shoutAt < 2200;
+    a.vbub.style.display = shout ? '' : 'none';
+    if (shout) {
+      a.vbub.textContent = villainShout(f.tier);
+      // Que el grito no se salga por los lados del mapa
+      const sw = stage.clientWidth, half = a.vbub.offsetWidth / 2 + 2;
+      a.vbub.style.left = Math.max(half, Math.min(sw - half, villainAnchor(a.desk).x / W * sw)) + 'px';
+      a.vbub.style.top = (villainTop(f, a.desk) - 7) / H * 100 + '%';
     }
     a.bub.textContent = txt;
-    a.bub.className = 'bub' + (a.data.state === 'done' ? ' done' : '') + (txt.length <= 2 ? ' icon' : '');
+    // En el mundo RPG el villano está sobre la cabeza del agente: el globo va a sus pies
+    const below = rpg() && a.seated && a.data.state !== 'idle' && a.desk && a.desk.face === 'up';
+    a.bub.className = 'bub' + (a.data.state === 'done' ? ' done' : '') + (txt.length <= 2 ? ' icon' : '') + (below ? ' below' : '');
     a.bub.style.display = txt ? '' : 'none';
     a.bub.style.left = a.x / W * 100 + '%';
-    a.bub.style.top = (headY(a) - 2) / H * 100 + '%';
+    a.bub.style.top = (below ? a.y + 1 : headY(a) - 2) / H * 100 + '%';
     const showTag = !a.hidden && (a.name === selected || a.name === hovered);
     a.tag.style.display = showTag ? '' : 'none';
     a.tag.style.left = a.x / W * 100 + '%';
@@ -351,8 +415,10 @@ function frame(t) {
 }
 
 // ---- Etiquetas fijas: salas y placas de los escritorios -------------------
+const roomLabels = [];
 for (const r of ROOMS) {
   const el = Object.assign(document.createElement('div'), { className: 'room', textContent: r.name });
+  roomLabels.push([r, el]);
   el.style.left = (r.x0 * TS + 2) / W * 100 + '%';
   el.style.top = ((r.face === 1 ? 0 : 11) * TS + 3) / H * 100 + '%';
   stage.append(el);
@@ -404,7 +470,8 @@ function renderList() {
   document.getElementById('btn-goto-editor').hidden = !a;
   if (!a) { el.textContent = 'Haz clic en un agente (en la lista o en la oficina) para ver su actividad y editar su aspecto.'; return; }
   const lines = a.data.log.map(l => `${new Date(l.t).toLocaleTimeString()} ${esc(l.text)}`).join('<br>') || 'Sin actividad todavía.';
-  el.innerHTML = `<b>${esc(a.name)}</b>${a.data.task ? '<br>Tarea: ' + esc(a.data.task) : ''}<br><br>${lines}`;
+  const foe = rpg() && a.fight && !a.fight.defeatAt ? `<br>Enemigo: ${villainName(a.fight.tier)} (nivel ${a.fight.tier})` : '';
+  el.innerHTML = `<b>${esc(a.name)}</b>${a.data.task ? '<br>Tarea: ' + esc(a.data.task) : ''}${foe}<br><br>${lines}`;
 }
 // Botón fijo (fuera del log, que se repinta a menudo) para ir al editor
 document.getElementById('btn-goto-editor').addEventListener('click', () =>
@@ -452,7 +519,7 @@ function connect() {
     const msg = JSON.parse(e.data);
     if (msg.type === 'snapshot') {
       const names = new Set(msg.agents.map(a => a.name));
-      for (const a of Object.values(agents)) if (!names.has(a.name)) { a.bub.remove(); a.tag.remove(); delete agents[a.name]; }
+      for (const a of Object.values(agents)) if (!names.has(a.name)) { a.bub.remove(); a.tag.remove(); a.vbub.remove(); delete agents[a.name]; }
       assignDesks(msg.roster);
       setLooks(msg.looks);
       timeline.setHistory(msg.hist);
@@ -500,6 +567,20 @@ function soundButton(id, key, setter, on, off) {
 }
 soundButton('btn-sfx', 'oficina.sfx', setSfx, '🔊 efectos', '🔈 efectos');
 soundButton('btn-music', 'oficina.music', setMusic, '♫ música', '♪ música');
+
+// ---- Tema: oficina o mundo RPG --------------------------------------------------
+const themeBtn = document.getElementById('btn-theme');
+function applyTheme(t) {
+  theme = t;
+  try { localStorage.setItem('oficina.theme', t); } catch { /* sin almacenamiento */ }
+  paintBackground();
+  themeBtn.textContent = rpg() ? '⚔ mundo RPG' : '🏢 oficina';
+  themeBtn.classList.toggle('on', rpg());
+  for (const [r, el] of roomLabels) el.textContent = rpg() ? ZONE_NAMES[r.id] : r.name;
+  renderList();
+}
+themeBtn.addEventListener('click', () => applyTheme(rpg() ? 'office' : 'rpg'));
+applyTheme(theme);
 
 // ---- Repeticiones --------------------------------------------------------------
 const dlg = document.getElementById('dlg');

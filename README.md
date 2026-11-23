@@ -84,6 +84,25 @@ Los cambios se ven al momento en la oficina. **✓ guardar** los conserva y **de
 
 El aspecto por defecto de cada rol está en `LOOKS`, dentro de `public/js/main.js`.
 
+## Tema «mundo RPG»
+
+El botón **🏢 oficina / ⚔ mundo RPG** de la cabecera cambia el tema (se recuerda para la próxima vez). En el mundo RPG las salas son zonas de fantasía (aldea, bosque encantado, castillo, cueva de cristal, fortaleza y desierto) y los escritorios, campamentos.
+
+Cuando un agente trabaja, aparece un villano en su campamento y luchan:
+
+- Cada herramienta que usa el agente es un golpe: el villano pierde vida y salen cifras de daño. Los globos cambian a «⚔ ¡ataque!», «✨ hechizo», «📜 estudia»…
+- **Cuanto más larga la tarea, más fuerte el villano.** Cada herramienta suma 1 punto de poder y cada 12 s de trabajo suma otro. A los 8 puntos el villano se transforma en uno de nivel 2 y a los 20, en el de nivel 3, con su grito correspondiente.
+
+  | Nivel | Villano |
+  |---|---|
+  | 1 | Slime sombrío |
+  | 2 | Caballero oscuro |
+  | 3 | Señor demonio (flota y tiene aura) |
+- Al terminar la tarea el villano explota y el agente celebra con «🏆 ¡victoria!».
+- En la lista de agentes, al seleccionar uno se ve contra qué enemigo lucha.
+
+Los villanos son diseños originales dibujados en código (`public/js/rpg.js`), igual que el resto del arte.
+
 ## Funciones
 
 - **Estados**:
