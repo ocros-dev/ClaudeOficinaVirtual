@@ -36,10 +36,10 @@ LOOKS_FILE = DATA_DIR / "looks.json"
 
 # ---- Aspecto personalizado de los agentes ------------------------------------
 HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
-LOOK_COLORS = ("shirt", "hair", "skin", "pants", "shoes", "accent", "accent2", "eyes")
-HAIR_STYLES = {"corto", "largo", "coleta", "rizado", "calvo", "puntas", "llama", "odango"}
-ACCESSORIES = {"glasses", "headset", "cap", "beret", "tie", "strawhat", "elfcap", "bandana", "mask", "mustache",
-               "sword", "belt", "armor", "coat", "clouds", "overalls", "bow", "skirt"}
+LOOK_COLORS = ("shirt", "hair", "skin", "pants", "shoes", "accent", "iris")
+HAIR_STYLES = {"corto", "largo", "coleta", "rizado", "calvo", "puntas", "coletas", "princesa"}
+ACCESSORIES = {"glasses", "headset", "cap", "beret", "tie", "headband", "ribbon", "scarf"}
+EYE_STYLES = {"normal", "anime"}
 looks_lock = threading.Lock()
 
 
@@ -56,6 +56,8 @@ def clean_look(look: dict) -> dict:
     out = {k: look[k] for k in LOOK_COLORS if isinstance(look.get(k), str) and HEX.match(look[k])}
     if look.get("hairStyle") in HAIR_STYLES:
         out["hairStyle"] = look["hairStyle"]
+    if look.get("eyes") in EYE_STYLES:
+        out["eyes"] = look["eyes"]
     acc = look.get("accessory")
     if isinstance(acc, list):
         out["accessory"] = [a for a in dict.fromkeys(acc) if a in ACCESSORIES]

@@ -24,6 +24,10 @@
   .bub::after { content:''; position:absolute; left:50%; bottom:-.9cqw; transform:translateX(-50%);
                 border:.6cqw solid transparent; border-top-color:#111; border-bottom:0; }
   .bub.done { background:var(--ok); }
+  .bub.below { transform:translate(-50%, 0); margin-top:6px; }
+  .bub.below::after { bottom:auto; top:-.9cqw; border-top:0; border-bottom:.6cqw solid #111; }
+  .bub.villain { background:#2a0f1e; color:#ffb0c0; border-color:#ff4a6a; }
+  .bub.villain::after { border-top-color:#ff4a6a; }
   .bub.icon { font-size:max(8px, 1.6cqw); padding:.2cqw .5cqw; }
   .tag { transform:translateX(-50%); font-size:max(5px, .85cqw); color:#fff; background:rgba(0,0,0,.65); padding:.2cqw .4cqw; }
   .room { font-size:max(5px, .8cqw); color:#f4f0ff; text-shadow:1px 1px 0 #000; letter-spacing:.5px; }
@@ -125,6 +129,7 @@
   <button id="btn-replay" class="btn">⏪ repetir sesión</button>
   <button id="btn-sfx" class="btn">🔈 efectos</button>
   <button id="btn-music" class="btn">♪ música</button>
+  <button id="btn-theme" class="btn" title="Cambiar entre la oficina y el mundo RPG">🏢 oficina</button>
   <button id="btn-hooks" class="btn">⚙ Claude Code</button>
   <span id="conn">● desconectado</span>
 </header>

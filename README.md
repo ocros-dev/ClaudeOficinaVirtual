@@ -73,15 +73,35 @@ Para cambiar los puestos predefinidos, edita `DESKS` en `public/js/map.js`.
 Selecciona un agente (en la lista o haciendo clic sobre él en la oficina) y aparece el **editor** en la columna derecha:
 
 - **Vista previa** animada: gírala con ◄ ▲ ▼ ► y elige quieto, caminando o tecleando.
-- **Personaje**: aplica de un clic una skin completa de anime o videojuego (Goku, Vegeta, Naruto, Kakashi, Itachi, Ichigo, Luffy, Sailor Moon, Dante, Cloud, Link, Mario). Después puedes retocarla.
-- **Peinado**: corto, largo, coleta, rizado, calvo, en punta, llamarada o moños.
-- **Colores** de pelo, piel, ojos, camisa, pantalón, zapatos, accesorio y color 2 (paleta o cualquier otro color con el selector).
-- **Accesorios**: gafas, auriculares, gorra, boina, corbata, sombrero de paja, gorro puntiagudo, bandana ninja, máscara, bigote, espadón, cinturón, armadura, abrigo largo, nubes, peto, lazo marinero y falda (solo un sombrero a la vez).
+- **Estilo anime**: 8 estilos listos con un clic (héroe, ninja, samurái, estudiante, maga, idol, rival y piloto). Son arquetipos originales; después puedes retocar cualquier detalle.
+- **Peinado**: corto, largo, coleta, rizado, calvo y los de estilo anime: puntas, coletas y princesa.
+- **Ojos**: normales o anime (grandes, con brillo y el color de iris que elijas).
+- **Colores** de pelo, piel, camisa, pantalón, zapatos y accesorio (paleta o cualquier otro color con el selector).
+- **Accesorios**: gafas, auriculares, gorra, boina, corbata, cinta, lazo y bufanda (solo uno a la vez entre gorra, boina y cinta).
 - **🎲 azar** para una combinación aleatoria y **↺ original** para volver al aspecto por defecto.
 
 Los cambios se ven al momento en la oficina. **✓ guardar** los conserva y **descartar** los deshace. Se guardan en `~/.oficina-virtual/looks.json`, compartido por el `.exe` y por `python app.py`. Si hay dos agentes del mismo tipo a la vez (`backend-expert#2`), comparten el aspecto.
 
-Las skins están en `PRESETS`, dentro de `public/js/presets.js`, y `AGENT_SKINS` decide cuál lleva cada agente por defecto. Los agentes sin skin asignada usan `LOOKS`, en `public/js/main.js`.
+Por defecto cada agente lleva un estilo anime según su rol (`ROLE_ANIME` en `public/js/main.js`); los agentes sin rol conocido reciben uno según su nombre. Los colores base están en `LOOKS`.
+
+## Tema «mundo RPG»
+
+El botón **🏢 oficina / ⚔ mundo RPG** de la cabecera cambia el tema (se recuerda para la próxima vez). En el mundo RPG las salas son zonas de fantasía (aldea, bosque encantado, castillo, cueva de cristal, fortaleza y desierto) y los escritorios, campamentos.
+
+Cuando un agente trabaja, aparece un villano en su campamento y luchan:
+
+- Cada herramienta que usa el agente es un golpe: el villano pierde vida y salen cifras de daño. Los globos cambian a «⚔ ¡ataque!», «✨ hechizo», «📜 estudia»…
+- **Cuanto más larga la tarea, más fuerte el villano.** Cada herramienta suma 1 punto de poder y cada 12 s de trabajo suma otro. A los 8 puntos el villano se transforma en uno de nivel 2 y a los 20, en el de nivel 3, con su grito correspondiente.
+
+  | Nivel | Villano |
+  |---|---|
+  | 1 | Slime sombrío |
+  | 2 | Caballero oscuro |
+  | 3 | Señor demonio (flota y tiene aura) |
+- Al terminar la tarea el villano explota y el agente celebra con «🏆 ¡victoria!».
+- En la lista de agentes, al seleccionar uno se ve contra qué enemigo lucha.
+
+Los villanos son diseños originales dibujados en código (`public/js/rpg.js`), igual que el resto del arte.
 
 ## Funciones
 
