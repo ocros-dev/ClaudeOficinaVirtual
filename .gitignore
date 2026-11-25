@@ -5,3 +5,5 @@ dist/
 *.spec
 events.log
 .venv/
+/OficinaVirtual.exe
+docs/estilo/

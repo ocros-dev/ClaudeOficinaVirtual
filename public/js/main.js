@@ -8,7 +8,8 @@ import {
 import { createTimeline, CATEGORIES } from './timeline.js';
 import { sfx, setSfx, setMusic } from './sound.js';
 import { createEditor } from './editor.js';
-import * as arena from './arena.js';
+import * as arena from './arena/index.js';
+import { setReduced, reduced as motionReduced } from './arena/render/vfx.js';
 
 // Tema: 'office' (oficina) o 'arena' (parties de héroes contra un Rey Demonio). El antiguo tema
 // «mundo RPG» ('rpg') ya no existe: quien lo tenía guardado abre la arena.
@@ -24,18 +25,31 @@ const isArena = () => theme === 'arena';
 const cv = document.getElementById('cv');
 const g = cv.getContext('2d');
 const stage = document.getElementById('stage');
-cv.width = W; cv.height = H;
-stage.style.aspectRatio = `${W} / ${H}`;
+// Tamaño lógico del lienzo según el tema: la oficina es de 480×304 y la arena de 960×608 (arena.SIZE)
+const sizeOf = () => (isArena() ? arena.SIZE : { w: W, h: H });
+function applySize() {
+  const { w, h } = sizeOf();
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; bg.width = w; bg.height = h; }
+  stage.style.aspectRatio = `${w} / ${h}`;
+  fitStage();
+}
+// Escalado entero cuando se pueda: en la arena el escenario mide un múltiplo de 960 px si cabe ×1 o más
+function fitStage() {
+  const avail = stage.parentElement ? stage.parentElement.clientWidth : 0, { w } = arena.SIZE;
+  const k = Math.floor((avail - 8) / w);                      // 8 px de borde del escenario
+  stage.style.setProperty('--arena-w', isArena() && k >= 1 ? `${k * w + 8}px` : '100%');
+}
+if (typeof ResizeObserver === 'function') new ResizeObserver(fitStage).observe(stage.parentElement);
 arena.mountHud(stage);
 
 buildWorld();
 const bg = document.createElement('canvas');
-bg.width = W; bg.height = H;
 function paintBackground() {
-  const bctx = bg.getContext('2d');
-  bctx.clearRect(0, 0, W, H);
+  const bctx = bg.getContext('2d'), { w, h } = sizeOf();
+  bctx.clearRect(0, 0, w, h);
   (isArena() ? arena.drawBackground : drawBackground)(bctx);
 }
+applySize();
 paintBackground();
 
 // ---- Aspecto de cada agente ---------------------------------------------
@@ -371,7 +385,7 @@ function frame(t) {
   g.restore();
   arena.updateHud(now, A);
 
-  // Globos y etiquetas de la oficina (HTML para que el texto sea nítido); en la arena los gestiona arena.js
+  // Globos y etiquetas de la oficina (HTML para que el texto sea nítido); en la arena los gestiona arena/render/hud.js
   for (const a of list) {
     if (A) { a.bub.style.display = 'none'; a.tag.style.display = 'none'; continue; }
     let txt = '';
@@ -421,8 +435,8 @@ function renderPlates() {
 // ---- Interacción ---------------------------------------------------------
 let selected = null, hovered = null;
 function agentAt(ev) {
-  const r = cv.getBoundingClientRect();
-  const mx = (ev.clientX - r.left) / r.width * W, my = (ev.clientY - r.top) / r.height * H;
+  const r = cv.getBoundingClientRect(), { w: sw, h: sh } = sizeOf();
+  const mx = (ev.clientX - r.left) / r.width * sw, my = (ev.clientY - r.top) / r.height * sh;
   let best = null;
   if (isArena()) return agents[arena.partyAt(mx, my)] || null;
   for (const a of Object.values(agents)) {
@@ -554,11 +568,30 @@ soundButton('btn-sfx', 'oficina.sfx', setSfx, '🔊 efectos', '🔈 efectos');
 soundButton('btn-music', 'oficina.music', setMusic, '♫ música', '♪ música');
 
 // ---- Tema: oficina o arena --------------------------------------------------------------------------------
+// Animación completa o reducida: por defecto manda la preferencia del sistema; si el usuario la cambia, manda su elección.
+// Es la misma bandera (render/vfx.js) que leen la batalla, el campamento y el fondo, así que el cambio es inmediato.
+const motionBtn = document.getElementById('btn-motion');
+(() => { try { const v = localStorage.getItem('oficina.motion'); if (v === 'full' || v === 'reduced') setReduced(v === 'reduced'); } catch { /* sin almacenamiento */ } })();
+function paintMotion() {
+  const r = motionReduced();
+  motionBtn.textContent = r ? '🎬 animación: reducida' : '🎬 animación: completa';
+  motionBtn.classList.toggle('on', !r);
+  motionBtn.setAttribute('aria-pressed', String(!r));
+}
+motionBtn.addEventListener('click', () => {
+  const next = !motionReduced();
+  setReduced(next);
+  try { localStorage.setItem('oficina.motion', next ? 'reduced' : 'full'); } catch { /* sin almacenamiento */ }
+  paintMotion();
+});
+paintMotion();
+
 const themeBtn = document.getElementById('btn-theme');
 function applyTheme(t) {
   const was = isArena();
   theme = t;
   try { localStorage.setItem('oficina.theme', t); } catch { /* sin almacenamiento */ }
+  applySize();
   paintBackground();
   themeBtn.textContent = isArena() ? '⚔ arena' : '🏢 oficina';
   themeBtn.classList.toggle('on', isArena());
@@ -568,6 +601,8 @@ function applyTheme(t) {
   if (isArena()) arena.noteSnapshot(now);        // los agentes que ya trabajan entran sin caminar
   renderList();
 }
+// Pestaña oculta: la arena vacía sus colas y no acumula acciones; al volver sigue desde el estado actual
+document.addEventListener('visibilitychange', () => { if (document.hidden) arena.pause(); else arena.resume(); });
 themeBtn.addEventListener('click', () => applyTheme(isArena() ? 'office' : 'arena'));
 applyTheme(theme);
 

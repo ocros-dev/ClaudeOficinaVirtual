@@ -129,6 +129,11 @@
   /* Tema arena: sin salas ni placas de escritorio; barra de vida del rey, placas de las parties, banner y resumen
      (la vida lleva número y las etapas marcas: nunca solo color) */
   .theme-arena .room, .theme-arena .plate { display:none; }
+  /* Arena: lienzo 960×608; el ancho lo fija main.js (múltiplo entero de 960 si cabe) y se centra */
+  .elite-bar { position:absolute; transform:translateX(-50%); width:5cqw; height:max(4px, .7cqw); background:#4a1a24; border:.15cqw solid #1a0a14; pointer-events:none; z-index:1; }
+  .elite-bar[hidden] { display:none; }
+  .elite-bar i { display:block; height:100%; background:#e8b830; }
+  #stage.theme-arena { width:var(--arena-w, 100%); max-width:100%; margin-inline:auto; }
   .arena-hud { position:absolute; top:0; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:.8cqw; max-width:98%;
                background:rgba(20,10,30,.88); border:.25cqw solid #6a3a8a; padding:.35cqw 1cqw; font-size:max(7px, 1.25cqw); letter-spacing:.02em; color:#f4eaff; white-space:nowrap; pointer-events:none; z-index:2; }
   .arena-hud[hidden], .arena-banner[hidden], .arena-summary[hidden], .arena-shout[hidden], .arena-empty[hidden], .camp-more[hidden], .aplate[hidden], .bub.hero[hidden], .bub.rest[hidden] { display:none; }
@@ -171,6 +176,7 @@
   <button id="btn-replay" class="btn">⏪ repetir sesión</button>
   <button id="btn-sfx" class="btn">🔈 efectos</button>
   <button id="btn-music" class="btn">♪ música</button>
+  <button id="btn-motion" class="btn" title="Animación de la arena: completa o reducida (por defecto, la preferencia del sistema)">🎬 animación</button>
   <button id="btn-theme" class="btn" title="Pasar a la arena del Rey Demonio">🏢 oficina</button>
   <button id="btn-hooks" class="btn">⚙ Claude Code</button>
   <span id="conn">● desconectado</span>

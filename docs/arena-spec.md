@@ -562,3 +562,383 @@ Preguntas para el usuario (con propuesta por defecto):
 3. **Secuaces y élites:** ¿afectan a la vida o son decorativos? *Propuesta: los secuaces son decorativos (mueren a golpes); los élites protegen al rey (los golpes van primero a ellos) y al caer dan +3 de poder a las parties.*
 4. **Reyes:** ¿un rey único o varios rotando, y cuántas formas? *Propuesta: 4 reyes rotando (Kazgorath, Vhel-Morkai, Ysgrim, Tzar-Nuul) con 3 formas; el MVP empieza con 1 rey y 1 forma.*
 5. **Razas y asignación:** ¿están bien las 8 razas (humanos, elfos, enanos, orcos, gnomos, bestiales, draconios, astrales) con 2 agentes por raza, y quieres poder elegir la raza de un agente desde el editor? *Propuesta: sí a las 8 razas con la asignación de la tabla; elegir raza en el editor queda para después.*
+
+---
+
+# v1.2: escala 16 bits y combate dinámico
+
+Estado: especificación de producto (sin código ni decisiones de implementación). Amplía la versión 1.1; lo que no se menciona aquí no cambia. Nota: la imagen de referencia del usuario no está disponible para quien escribe; los requisitos de arte parten de su descripción (~45×60 px, 4-5 tonos por color, contorno negro grueso, pelo con volumen, pliegues en la ropa, proporciones chibi-atlético). Conviene que `ux-designer` la tenga delante al dibujar.
+
+## 1. Objetivo de la v1.2
+
+**Problema.** Hoy los héroes (18-25 px) son iconos pequeños que casi no se mueven y los ataques son proyectiles diminutos: la batalla informa («hay trabajo») pero no entretiene. El usuario quiere ver una **pelea de sprites 16 bits**: personajes con detalle, golpes, embestidas, teletransportes, rayos enormes, y un rey y unos enemigos que también se muevan y reaccionen. Además quiere una **raza nueva de poder creciente** inspirada en el género, pero con identidad propia.
+
+**Éxito (verificable en demo y uso propio):**
+- Con `python demo.py` (4 agentes), en cualquier ventana de 10 s se ven al menos 6 acciones distintas (de la lista de «Coreografía») y ninguna party está más de 4 s sin moverse de forma visible.
+- Cada herramienta usada produce una acción visible en menos de 300 ms; la barra del rey baja en ese plazo (regla actual).
+- El rey se desplaza, esquiva o retrocede al menos una vez cada 5 s durante el combate.
+- 30 fps o más con 4 parties completas + 4 vanguardias, rey forma final, 10 secuaces y 2 élites (medido en el equipo del usuario).
+- Revisión de originalidad de la raza nueva firmada (lista «Evitar» ampliada, apartado 3.5).
+
+## 2. Decisión de escala
+
+### 2.1 Problema de espacio
+Un personaje de 45×60 px ocupa unas 2 veces el área lineal de los actuales (~30 px). En 480×304 caben unos 10 personajes de ancho y no cabrían 3 héroes × varias parties + rey de ~220 px + campamento. Además, el combate dinámico necesita **sitio para moverse** (embestidas de 60-150 px, teletransportes).
+
+### 2.2 Opciones
+
+| Opción | Qué es | A favor | En contra |
+|---|---|---|---|
+| **A. Lienzo mayor, píxel nativo** | Lienzo lógico **960×608** (exactamente 2× el actual), sprites dibujados a su detalle real | Mantiene composición, puestos, campamento y proporciones de la spec actual (casi todo «×2»); un píxel es un píxel (sin escalado borroso); sitio para moverse | Más píxeles por fotograma (~4×); hay que redibujar todos los sprites con más detalle; hay que cuidar la caché |
+| B. Menos héroes visibles | 1-2 héroes por party | Barato | Rompe «party de 3» (decisión de producto del usuario) |
+| C. Solo el líder a escala completa | Vanguardia grande; los otros dos pequeños o ausentes | Barato en perfiles | Mezcla escalas de píxel (se ve mal) y pierde la identidad de las clases |
+| D. Cámara con zoom a la acción | Lienzo igual, la cámara acerca/aleja | Efecto cinematográfico | Rompe la vista única arena + campamento; mezcla escalas de píxel; la acción simultánea de varias parties no cabe en un solo plano; más complejo |
+| E. Mantener 480×304 y dibujar a 45×60 | Sprites grandes en el lienzo actual | Cero cambio de lienzo | No caben: el rey y las parties se tapan entre sí |
+
+### 2.3 Recomendación: A (960×608) con límites de parties
+- **Lienzo lógico 960×608 en el tema arena** (la oficina y el mundo RPG no cambian). Todas las coordenadas de la spec 1.1 (puestos, empalizada y y=248, rey a y=170, etc.) se multiplican por 2. Se escala a la ventana con **vecino más cercano** (sin suavizado) y, cuando la ventana lo permite, a múltiplos enteros.
+- **Tamaños nuevos (alto):** héroe 44-66 px según raza (humanos 60, enanos 50, gnomos 44, orcos 66, draconios 64…; ancho de casilla 45-52 px). Secuaz 24-40 px. Élite 90-120 px. **Rey: base ≥ 214 px (35 %), final ≥ 274 px (45 %)**, mismos porcentajes de la spec 1.1.
+- **Parties:** hasta **4 completas** (3 héroes, combate completo). De la 5.ª a la 8.ª, **solo el héroe de vanguardia** (escala completa, con su combate). Más de 8: insignia «+N parties». *Cambia el límite anterior (6 completas, 7.ª-10.ª con vanguardia): se recorta porque cada una cuesta más y necesita sitio para pelear; todas siguen contando para el daño.*
+- **Sin cámara móvil.** Los golpes grandes dan un temblor corto de pantalla (se anula con movimiento reducido). Un «plano de acción» con zoom queda como *Could* futuro.
+- **Campamento:** se mantiene tal cual, en la franja baja ×2 (y ≥ 496, unos 112 px), con 7 parties visibles y «+N descansando». Los héroes en reposo usan sus sprites 16 bits (poses de reposo, ver 4.4); el mobiliario y los objetos se redibujan a la nueva escala con el mismo contenido. Las 8 actividades se conservan.
+- **Rendimiento (requisitos, no técnica):** 30 fps o más en el caso medido arriba; el primer dibujo de una raza nueva no provoca un parón visible mayor de 50 ms; memoria de sprites en caché ≤ 64 MB (se generan solo las razas, etapas y poses que se usan y se descartan las menos usadas). La técnica es decisión de `frontend-expert`.
+
+### 2.4 Estilo 16 bits (requisitos de arte)
+- **Contorno** exterior negro-azulado `#0a0810` de 1 px nativo (grueso a esta escala), más líneas internas de 1 px solo para separar volúmenes.
+- **4-5 tonos por color** (sombra profunda, sombra, base, luz, brillo) con luz fija desde arriba a la izquierda; sin degradados suaves ni antialiasing.
+- **Pelo con volumen:** al menos 3 mechones o masas con su propia luz y sombra; se mueve en el ciclo de idle y de carrera.
+- **Ropa con pliegues:** al menos 2 líneas de pliegue visibles en torso o capa/falda y en cada manga.
+- **Proporciones:** cabeza ≈ 1/4,5 de la altura, hombros marcados, piernas largas (chibi-atlético); ojos de 2-3 px con brillo.
+- **Poses por héroe (mínimo):** reposo (4 fotogramas), caminar (6), correr/embestida (4), golpes cuerpo a cuerpo (3 golpes × 3 fotogramas), disparo/lanzamiento (carga 3 + disparo 2), apoyo/hechizo (4), golpeado (2), bloqueo (1), lanzado por los aires (2), victoria (3), transformación (3), y de campamento: sentado (2), dormir (2), comer/beber (2). Se miran a izquierda o derecha reflejando el sprite.
+- Los 3 héroes de una party se distinguen por silueta y color de la ropa, no solo por el arma.
+- **Compatibilidad durante la migración:** una raza aún no redibujada se muestra con su sprite antiguo ampliado ×2 (sin suavizado) y se mueve solo con las acciones genéricas; la app siempre queda utilizable.
+
+## 3. Raza nueva: **Tempestarios**
+
+### 3.1 Identidad
+- **Nombre:** Tempestarios · **Lugar:** Cumbres del Estruendo. Es la raza 9; en su emblema, un rayo ramificado (⚡ y 🌩).
+- **Lore breve:** nacen en cumbres donde cae el rayo sin descanso. Su cuerpo guarda **carga**: cuanto más combaten, más carga acumulan, y la carga les cambia el pelo, los ojos y la piel. Los jóvenes la descargan con furia; los maestros la **contienen**, y por eso su forma final es la más serena y la más peligrosa. Su lema: «La tormenta más fuerte es la que no hace ruido».
+- **Silueta propia (para distinguirlos a 60 px):** pelo **largo y caído hacia atrás y a los lados** que en las etapas altas **flota** con mechones angulosos (no erizado hacia arriba); banda metálica en la frente; **brazaletes pararrayos** plateados; una **cicatriz ramificada de rayo** (figura de Lichtenberg) desde el hombro, tenue desde la etapa 1; túnica larga azul noche con faldones a los lados y faja de cuero.
+- **Clases:** vanguardia **Relámpago** (puños y patadas con guanteletes), distancia **Fulminador** (rayos y esferas de energía), apoyo **Pararrayos** (varilla-bastón que absorbe la carga y la reparte: escudo, curación, potenciación).
+
+### 3.2 Paleta (5 tonos de sombra a brillo)
+| Elemento | Tonos |
+|---|---|
+| Contorno | `#0a0810` |
+| Piel A (bronce frío) | `#5a3a2e` `#86573f` `#b3805a` `#d4a37a` `#ecc8a0` |
+| Túnica A (azul noche) | `#0c1426` `#16223e` `#22345c` `#34508a` `#5a7ac0` |
+| Ribetes y brazaletes (plata) | `#6a7488` `#98a2b8` `#c8d0e0` `#eef2fa` |
+| Cuero (faja, correas) | `#3a2a20` `#5a4030` `#7a5a40` |
+| Pelo etapa 1 (gris tormenta) | `#1c2230` `#2e3a50` `#46566f` `#6a7c96` `#9aaac2` |
+| Pelo etapas 2-4 (plata y blanco) | `#8a90b0` `#bcc2dc` `#e4e8f6` `#f8faff` `#ffffff` |
+| Mechones eléctricos y marcas | `#5a24c8` `#8a4aff` `#b890ff` `#d8c4ff` y núcleo `#ffffff` |
+| Aura (capas) | exterior `#5a24c8` (35 %), media `#8a4aff`, núcleo `#e0d0ff` |
+| Ojos | etapa 1 gris-azul `#8ab0d8`; 2 violeta `#a070ff`; 3 blanco con iris `#b890ff`; 4 blanco-lavanda `#efe6ff` |
+| **Variante B** | piel pálida `#e8c8b0`; túnica verde pino `#0c1e1a` `#16302a` `#22483c` `#346a58` `#5a9a84`; mechones y aura índigo `#3a4aff` `#6a7aff` `#a8b4ff` |
+
+Diferenciación frente a los **Astrales** (violeta y estrellas): los Tempestarios usan violeta solo en **rayos angulosos** y marcas, con pelo blanco-plata y túnica azul oscuro; los Astrales llevan estrellas y órbitas suaves. Revisar juntos en pantalla.
+
+### 3.3 Etapas (4)
+El poder se calcula igual que en el resto (herramientas + segundos ÷ 12). Los Tempestarios tienen **4 etapas** con umbrales más tempranos para que su crecimiento se note.
+
+| Etapa | Umbral de poder | Daño | Pelo | Ojos | Aura y cuerpo | Grito (globo 2,2 s) |
+|---|---|---|---|---|---|---|
+| 1 · **Calma Previa** | 0 | ×1 | gris tormenta, liso, hasta los hombros | gris-azul | sin aura; cicatriz-rayo tenue; alguna chispa suelta al golpear | (entrada) «Aún no ha tronado.» |
+| 2 · **Chispa Viva** | 8 | ×1,5 | plata con 3 mechones violeta; empieza a moverse | violeta | chispas violeta orbitando, un arco de rayo corto cada ~1 s en los brazos | «¡Se carga el cielo!» |
+| 3 · **Tormenta Desatada** | 20 | ×2 | blanco plata, largo y flotante, 5 mechones eléctricos | blancos con iris violeta | aura de **rayos ramificados** violeta, marcas luminosas en brazos y cuello, sombra con relámpagos, suelo con grietas de luz; ropa ondeando | «¡Que truene el cielo entero!» |
+| 4 · **Ojo de la Tormenta** (forma serena) | 40 | ×2,5 | blanco brillante, muy largo, flota quieto y ordenado; mechones recogidos en una **corona de arcos** | blanco-lavanda, párpados a medias | el aura **se contiene**: casi sin rayos externos, un contorno fino de luz `#e0d0ff` y **anillos de rayo** orbitando despacio; marcas luminosas cubren brazos, cuello y frente; ×1,1 de tamaño; en el suelo un círculo de luz | «Ya no hay tormenta… solo yo.» |
+
+- **Transformación:** el cielo del tema se oscurece 0,5 s sobre la party, cae **un rayo** sobre el héroe de vanguardia y los otros dos se cargan por arco; el pelo cambia a mitad del destello. Total 0,9 s (etapas 1→3) y 1,4 s (3→4, más lenta y silenciosa; sin flash blanco a pantalla completa).
+- **Mecánica propia «Carga» (visual):** entre etapas, una barra fina de chispas alrededor del héroe vanguardia indica cuánto falta para la siguiente (0-100 %). No cambia reglas.
+- **Acentos de reglas:** las etapas, el refuerzo tardío (llega con poder 5 → etapa 1; con rey en forma 3 llega a etapa 2) y la pérdida al salir son las de la spec 1.1.
+- **Asignación:** Tempestarios para `claude` (el agente principal, el que más se ve). `product-owner` sigue con Humanos. La función `hash mod 8` de agentes desconocidos **no cambia** (no se reasigna a nadie): los Tempestarios solo se asignan por tabla o, más adelante, desde el editor.
+- **Etapa visible extra para las demás razas:** no. Las 8 razas siguen con 3 etapas.
+
+### 3.4 Movimiento y ataques de los Tempestarios
+Ver tabla de coreografía (4.3, fila 9). Sello de la raza: **teletransporte relámpago** (desaparecen en un arco de luz y reaparecen detrás del objetivo), **combos de puños con chispa** y **rayo grande** que carga en 0,6 s con un anillo de arcos y se dispara en haz recto.
+
+### 3.5 Originalidad (ampliación de «Evitar» para esta raza)
+No se usarán, bajo ningún concepto: el nombre ni derivados de «saiyajin»/«Super…», pelo dorado o amarillo ni en punta vertical, aura amarilla de llamas ascendentes, ojos turquesa o verdes, cola de mono, gi naranja o azul con cinturón, gritos largos de carga reconocibles, nombres de técnicas ya publicadas (Kamehameha, Kaioken…), ni poses idénticas a las de obras conocidas. El pelo plateado/blanco largo, el violeta y los rayos son rasgos genéricos del género; la **identidad** se asegura con el nombre, la silueta (pelo largo caído, banda frontal, brazaletes, cicatriz de rayo), el aura de rayos angulosos (no de llamas) y la etapa final serena. Revisión visual por el Product Owner antes de publicar (esto es guía de producto, no asesoría legal).
+
+## 4. Coreografía de combate
+
+### 4.1 Principios
+- **Cada evento de herramienta dispara una acción visible**; la barra del rey baja en ≤ 300 ms (la animación puede durar más; el golpe visual conecta a ≤ 250 ms desde el evento).
+- **Entre acciones, nunca estáticos:** los héroes están «en guardia» (balanceo, pasos de reposicionamiento, mirar al objetivo); cada 4-6 s con el agente trabajando hacen un cruce de golpes visual con un secuaz o con el rey (sin daño).
+- **Nunca hay derrota ni muerte de héroes.** Los enemigos pueden golpear a los héroes **solo visualmente** (retroceso de 6-10 px, pose «golpeado» 0,3 s, o bloqueo/esquiva); se recuperan solos.
+- **Cada raza se mueve distinto** (4.3) y **cada clase ataca distinto**.
+- **Contener el caos:** una party ejecuta **1 acción a la vez**; las herramientas que llegan mientras tanto se encolan (máx. 3) y si hay más se funden en una **ráfaga** (combo rápido de 0,5 s) que cuenta todos los golpes. A la vez en toda la escena: máx. **3 acciones grandes** (rayo cargado, teletransporte de equipo, choque) y máx. 4 imágenes residuales por héroe.
+- Con `prefers-reduced-motion`: sin desplazamientos largos ni teletransportes (el héroe se queda y pasa a la pose de golpe con un destello fijo de 0,15 s), sin temblor, sin imágenes residuales; los rayos se dibujan completos sin carga animada.
+
+### 4.2 Eventos de herramienta a acciones
+| Evento / herramienta del agente | Quién actúa | Acción (duración) | Efecto en el rey |
+|---|---|---|---|
+| Comienza a trabajar (estado) | los 3 | **Entrada de combate**: carrera por la puerta, derrape y pose de guardia (≤ 2,5 s) | — |
+| `Read`, `Grep`, `Glob`, `LS` (explorar) | vanguardia | **Tanteo**: paso lateral, finta y golpe rápido (0,4 s) | −1 × mult., parpadeo del rey |
+| `Edit`, `Write`, `NotebookEdit` (modificar) | vanguardia | **Combo**: embestida + 3 golpes + remate que **lanza** al objetivo (0,9 s) | −1 × mult., el rey retrocede y vuelve |
+| `Bash` (ejecutar) | distancia | **Rayo cargado**: carga 0,4-0,6 s y disparo de haz o esfera grande (0,9 s) | −1 × mult., impacto con onda |
+| `WebFetch`, `WebSearch` (buscar fuera) | distancia | **Disparo largo**: salto atrás y proyectil que cruza la pantalla (0,8 s) | −1 × mult. |
+| `TodoWrite` y planificación | apoyo | **Potenciación**: halo y aura sobre los otros dos, que brillan 1 s (0,8 s) | −1 × mult. (haz de luz) |
+| `Task` / subagente | los 3 | **Técnica de equipo**: los 3 se teletransportan alrededor del objetivo y golpean a la vez (1,6 s); mínimo 8 s entre dos | −1 × mult. |
+| Otra herramienta desconocida | vanguardia | **Tanteo** | −1 × mult. |
+| Herramienta cuando hay secuaces / élite | el actor elige objetivo según la regla actual | el secuaz sale **despedido** en arco y rebota; al élite se le ve **retroceder** | según reglas 1.1 |
+| Cambio de etapa | los 3 | **Transformación** (3.3) | — |
+| Terminó (estado) | los 3 | **Victoria**: pose, destello y vuelta caminando por la puerta | — |
+| Daño pasivo (cada 10 s) | el más cercano | cruce de golpes visual | −1 por cada 10 s |
+| Error de herramienta | vanguardia | el golpe es **esquivado** y contraataca con Tanteo; el daño cuenta igual (la barra no depende del acierto) | −1 × mult. |
+
+*Supuesto a confirmar con `backend-expert`:* el navegador recibe el tipo de herramienta (`PreToolUse`) y, si no llega el resultado, «error de herramienta» se omite. El tipo de herramienta se obtiene del evento ya existente, sin cambiar `server.py` ni `hooks.py`; si no estuviera disponible, todas las herramientas usan el reparto cíclico Tanteo → Combo → Rayo.
+
+Los **combos largos** se encadenan por etapa: etapa 1 usa el combo de 3 golpes; etapa 2 añade un golpe y teletransporte; etapa 3, remate con onda; etapa 4 (Tempestarios), un movimiento sin gritos (silencio, un solo golpe enorme con trueno retardado).
+
+### 4.3 Estilo de movimiento y ataques por raza y clase
+
+| # | Raza | Cómo se mueve | Vanguardia (cuerpo a cuerpo) | Distancia o magia | Apoyo | Técnica de equipo (etapa 3+) |
+|---|---|---|---|---|---|---|
+| 1 | Humanos | pasos firmes, esgrima, retroceso con escudo | Caballera: estocada, corte ascendente y tajo cruzado; empuja con el escudo y lanza | Hechicero: esfera de cristal que estalla en 3 | Sanadora: halo que cura y barrera | **Carga del Alba**: formación en V, estocada de luz que cruza la arena |
+| 2 | Elfos | saltos ágiles, volteretas, esquivan con un paso fantasma | Danzante: remolino de dos espadas, salto y corte | Arquera: lluvia de 3 flechas, flecha cargada que atraviesa | Druida: raíces que sujetan al objetivo, flores que curan | **Lluvia de hojas**: los 3 saltan y descargan un aguacero de flechas y cuchillas |
+| 3 | Enanos | pesados, avance con el hombro, aterrizajes que agrietan el suelo | Martillador: martillazo al suelo con onda y golpe que lanza | Artillero: cañonazo con retroceso que lo empuja atrás | Rúnico: runa azul que protege y estalla | **Yunque de Fuego**: el martillo cae como un meteoro y rebota en cadena |
+| 4 | Orcos | arrancan a correr con un rugido, embestidas directas | Berserker: dos hachas en torbellino, embestida y salto | Cazador: lanza de jabalina con el cuerpo entero | Chamán: tótem que golpea con trueno y cura | **Estampida de Colmillos**: los 3 corren en línea y arrasan |
+| 5 | Gnomos | trotes cortos, saltos con propulsores, giran sobre sí | Piloto de mecha: puñetazo de mecha con cohete y taladro | Artífice: torreta y 2 drones que disparan | Alquimista: lanza pociones de colores (curar, ralentizar) | **Mecha Colosal**: los 3 se ensamblan un instante en un mecha que golpea |
+| 6 | Bestiales | a cuatro patas o a saltos, zarpazos laterales, muy veloces | Oso: zarpazo doble y abrazo que lanza | Zorra: señuelos de ilusión, 3 clones disparan | Ciervo: astas que curan, pulso de luz | **Aullido Lunar**: 3 siluetas espectrales cruzan la pantalla |
+| 7 | Draconios | desfile altivo, cola que azota, planeo corto | Lancero: lanzazo con carrera y cola | Aliento-mago: chorro de fuego frío continuo | Sacerdotisa: escamas de luz que escudan | **Aliento Triple**: tres chorros que se funden en uno |
+| 8 | Astrales | flotan, deslizan, aparecen con destellos | Guardián: golpes de luz, escudo estelar | Astróloga: constelación que se une y cae | Monje: anillos que ralentizan al objetivo | **Alineación**: una constelación gigante cae del cielo |
+| 9 | **Tempestarios** | **teletransporte relámpago** (desaparecer y reaparecer tras el objetivo con imagen residual), carreras en línea recta con estela | Relámpago: combo de puños y patadas con chispa, embestida, patada voladora que **lanza**; golpes más rápidos en etapas altas | Fulminador: rayo cargado (anillo de arcos) y haz recto grande, esferas de energía, **choque de rayos** | Pararrayos: absorbe una descarga y la redistribuye (escudo y pulso), varilla que atrae rayos del cielo | **Tormenta de Cumbre**: los 3 se separan en 3 teletransportes, golpean y juntan un único rayo desde el cielo |
+
+Cada técnica de equipo sale en el golpe combinado de etapa 3 (spec 1.1, *Could*) y, en esta versión, también como respuesta a `Task` cuando la party es etapa ≥ 3.
+
+### 4.4 Rey Demonio, secuaces y élites
+
+**Acciones del rey (todas visuales, se encadenan sin daño a héroes):**
+| Acción | Cuándo | Qué se ve |
+|---|---|---|
+| Respiración y mirada | siempre | movimiento suave del torso, ojos que siguen a la party que ataca |
+| **Recibir golpe** | cada herramienta | destello blanco, retroceso de 4-8 px y regreso (16 px si el golpe «lanza») |
+| **Esquiva** | cada 8-12 s o cuando llega un rayo | desplazamiento lateral rápido de 20-40 px con imagen residual; el proyectil pasa de largo |
+| **Zarpazo / barrido** | cada 6-9 s | amago y golpe sobre una party; los héroes bloquean o saltan, se ven ondas |
+| **Embestida** | cada 20-30 s | avanza 40-60 px hacia las parties y vuelve |
+| **Rugido** | transformaciones y cada 40 s | temblor corto, onda y secuaces que se encogen |
+| **Rayo del rey** | cada 25-35 s | carga 1,2 s con aviso (círculo en el suelo) y haz grande; si hay party etapa ≥ 3, **choque de rayos** (ver 4.5) |
+| **Teletransporte de sombra** | forma 2 y 3 | se esfuma y reaparece unos 80 px a un lado |
+
+**Ataque firma por rey:** Kazgorath, **Cometa de Brasas** (lluvia de bolas de fuego); Vhel-Morkai, **Marea Negra** (tentáculos que barren el suelo); Ysgrim, **Lanza de Escarcha** (carámbanos que caen en fila); Tzar-Nuul, **Nube de Plaga** (enjambre que cruza la pantalla).
+
+**Secuaces:** patrullan en zigzag, **embisten** a una party y rebotan; los que mueren salen **despedidos en arco** con rebote y estallido; el Ojo flotante carga un láser fino; el murciélago pica en picado y vuelve. Tardan 0,6-1 s en cada acción.
+
+**Élites:** Verdugo — avanza, tajo enorme (se ven las ondas) y escudo de sombra al retroceder; Brujo infernal — teletransporte corto y bola de sombra; Cancerbero — carrera por el flanco y mordisco doble, esquiva a saltos; Heraldo alado — pica en picado, toca la trompeta (onda) y vuelve a volar. Al ser golpeados, **retroceden** y se recuperan.
+
+### 4.5 Choque de rayos
+- Lo inicia el **Rayo del rey** cuando hay una party etapa ≥ 3 (o, en sentido contrario, el Rayo cargado de esa party si el rey está cargando).
+- Duración 1,5 s: los dos haces se encuentran en un punto con onda y chispas; el punto de choque se mueve como máximo 40 px y acaba **siempre a favor de la party**, empujando al rey (retroceso grande y destello).
+- Máx. 1 choque a la vez y mínimo 20 s entre dos. Sin flash a pantalla completa; destello limitado a la zona del choque.
+
+### 4.6 Reglas generales de combate dinámico
+- Los movimientos de las parties quedan dentro de su **carril** (unos ±120 px a cada lado de su puesto); con 3-4 parties completas el carril se reduce a ±80 px para no taparse.
+- Ningún movimiento hace que un héroe quede por encima del rey (los pies siempre por debajo de y = 340 de la nueva escala) ni cruce la empalizada.
+- El rey no se desplaza más de 80 px de su posición y siempre vuelve.
+- La dirección del sprite refleja el lado del objetivo.
+
+## 5. Historias de usuario (v1.2)
+
+### HU-15 · Lienzo grande y escala 16 bits en la arena · Prioridad: Must
+Como usuario, quiero que la arena se vea a una escala de juego de pelea 16 bits, para disfrutar de los personajes con detalle.
+
+**Criterios de aceptación**
+- Escenario: lienzo
+  Dado el tema arena, Entonces el lienzo lógico es de 960×608 y los temas oficina y mundo RPG siguen con su tamaño actual.
+- Escenario: tamaños
+  Entonces un héroe mide entre 44 y 66 px de alto, el rey en forma base al menos 214 px y en forma final al menos 274 px.
+- Escenario: nitidez
+  Entonces no se ve suavizado: cada píxel del sprite es un cuadrado nítido a cualquier tamaño de ventana.
+- Escenario: encaje
+  Dado 4 parties completas + rey + campamento, Entonces ningún héroe se solapa con la placa ni con el pie de otro, y el rey no tapa a ninguna party.
+- Escenario: límites
+  Dado 9 agentes trabajando, Entonces hay 4 parties completas, 4 con solo vanguardia y la insignia «+1 parties».
+- Escenario: cambio de tema
+  Dado que cambio de tema, Entonces el lienzo se adapta en menos de 1 s sin recargar.
+
+**Casos borde:** ventana muy pequeña (se reduce proporcionalmente, sin cortar la escena); ventana en pantalla completa (se amplía manteniendo proporción).
+**Requisitos no funcionales:** 30 fps o más en el caso medido; memoria de sprites ≤ 64 MB.
+
+### HU-16 · Sprites de héroes en estilo 16 bits (piloto: Tempestarios etapas 1-2) · Prioridad: Must
+Como usuario, quiero héroes con contorno grueso, sombreado en 5 tonos, pelo con volumen y ropa con pliegues, para que se parezcan a los sprites de los juegos de pelea.
+
+**Criterios de aceptación**
+- Escenario: estilo
+  Entonces cada color usa 4 o 5 tonos, el contorno exterior es de 1 px nativo `#0a0810`, el pelo tiene al menos 3 masas con luz y sombra y la ropa tiene al menos 2 pliegues visibles por prenda principal.
+- Escenario: poses
+  Entonces existen todas las poses del apartado 2.4 para los 3 héroes de la raza piloto.
+- Escenario: distinguir clases
+  Entonces vanguardia, distancia y apoyo se distinguen por silueta y color a tamaño normal.
+- Escenario: compatibilidad
+  Dado una raza aún no migrada, Entonces se ve con su sprite antiguo ampliado ×2 sin errores.
+- Escenario: revisión de arte
+  Entonces `ux-designer` aprueba por escrito la comparación con la imagen de referencia del usuario.
+
+### HU-17 · Combate dinámico de la party · Prioridad: Must
+Como usuario, quiero que cada herramienta usada se vea como un ataque con movimiento, para disfrutar mirando la pelea.
+
+**Criterios de aceptación**
+- Escenario: reacción rápida
+  Dado una party trabajando, Cuando su agente usa `Edit`, Entonces en menos de 300 ms el héroe de vanguardia inicia el **Combo** y la barra del rey baja.
+- Escenario: tipos distintos
+  Dado el uso de `Read`, `Edit`, `Bash` y `Task`, Entonces se ven 4 acciones distintas (Tanteo, Combo, Rayo cargado, Técnica de equipo).
+- Escenario: cola
+  Dado 6 herramientas en 1 s, Entonces la party no ejecuta más de 1 acción a la vez, encola 3 como máximo y el resto se funde en una ráfaga; el daño contado es el de las 6.
+- Escenario: nunca estáticos
+  Dado una party trabajando 10 s sin herramientas, Entonces los héroes se mueven (guardia o cruce de golpes) al menos cada 4 s.
+- Escenario: sin muertes
+  Entonces ningún héroe cae ni se muestra derrota.
+- Escenario: movimiento reducido
+  Dado `prefers-reduced-motion`, Entonces las acciones no desplazan al héroe ni dejan imágenes residuales y los golpes se ven como pose + destello fijo.
+
+**Casos borde:** herramienta de un agente que acaba de salir (se ignora); 30 herramientas en 1 s (sin colgar el navegador; se aplica daño de todas y se dibujan como mucho 6 cifras); herramienta durante la transformación (se encola hasta que termine).
+
+### HU-18 · El rey y los enemigos se mueven y reaccionan · Prioridad: Must (rey) / Should (secuaces y élites)
+Como usuario, quiero que el rey y sus ayudantes esquiven, ataquen y reciban golpes, para que la pelea parezca de dos bandos.
+
+**Criterios de aceptación**
+- Escenario: retroceso
+  Dado un golpe de **Combo**, Entonces el rey retrocede entre 4 y 16 px y vuelve a su sitio en menos de 0,6 s.
+- Escenario: ritmo
+  Dado un combate de 30 s con 1 party, Entonces el rey hace al menos 3 acciones propias (esquiva, zarpazo, embestida, rayo, teletransporte o rugido).
+- Escenario: ataque firma
+  Entonces cada rey tiene su ataque firma (4.4) y se ve al menos 1 vez por minuto.
+- Escenario: sin daño a héroes
+  Entonces los ataques enemigos solo provocan pose «golpeado»/bloqueo y nunca cambian puntos ni etapas.
+- Escenario: secuaces
+  Dado secuaces vivos, Entonces embisten a una party y, al morir, salen despedidos en arco con destello.
+- Escenario: élites (Should)
+  Entonces cada élite tiene su ataque (4.4) y retrocede al ser golpeado.
+- Escenario: posición
+  Entonces el rey nunca se aleja más de 80 px de su puesto y siempre vuelve.
+
+### HU-19 · Raza Tempestarios con 4 etapas · Prioridad: Must (decisión del usuario)
+Como usuario fan del género, quiero una raza que se transforma por etapas con pelo, ojos y aura que cambian, para ver crecer a mi agente principal.
+
+**Criterios de aceptación**
+- Escenario: etapas
+  Dado un agente Tempestario con poder 7, 8, 20 y 40, Entonces se dibujan respectivamente las etapas 1, 2, 3 y 4 (cada cambio con su transformación de 0,9 s o 1,4 s y su grito en globo de 2,2 s).
+- Escenario: distinguibles
+  Entonces las 4 etapas se distinguen a tamaño normal por pelo, ojos y aura (color y forma, no solo brillo).
+- Escenario: etapa serena
+  Dado la etapa 4, Entonces el aura es contenida (contorno fino y anillos orbitando), no tiene rayos externos grandes y el pelo flota sin parpadear.
+- Escenario: daño
+  Dado etapas 1 a 4, Entonces la barra baja 1, 1,5, 2 y 2,5 puntos por herramienta.
+- Escenario: asignación
+  Dado `claude` trabajando, Entonces su party es de Tempestarios; las asignaciones de las otras 15 razas/roles no cambian.
+- Escenario: pérdida
+  Dado una party etapa 4 que acaba y deja pasar 5 s, Entonces vuelve a etapa 1.
+- Escenario: originalidad
+  Entonces cumple 3.5 y no contiene ningún elemento de la lista «Evitar».
+- Escenario: movimiento reducido
+  Entonces la transformación es un fundido directo de 0,3 s sin rayo cayendo.
+
+**Casos borde:** dos Tempestarios a la vez (el segundo usa variante B con mechones índigo); entrada en refuerzo con rey en forma 3 (llega a etapa 2); transformación justo cuando el rey se transforma (se muestran ambas sin taparse: gritos en globos separados).
+**Requisitos no funcionales:** sin parpadeos mayores de 3 por segundo en un área grande; las marcas luminosas no se animan más de 2 Hz.
+
+### HU-20 · Ataques y movimientos propios de cada raza · Prioridad: Should
+Como usuario, quiero que cada raza y clase pelee distinto, para reconocerlas por cómo se mueven.
+
+**Criterios de aceptación**
+- Escenario: cobertura
+  Entonces las 9 razas tienen los movimientos de la tabla 4.3 (3 clases + técnica de equipo).
+- Escenario: distinguibles
+  Dado dos parties de razas distintas haciendo `Edit`, Entonces los movimientos se distinguen en un vídeo mudo (silueta del ataque y trayectoria distintas).
+- Escenario: técnica de equipo
+  Dado una party etapa ≥ 3 que usa `Task`, Entonces ejecuta su técnica de equipo y mínimo hay 8 s entre dos.
+- Escenario: límites
+  Entonces nunca hay más de 3 acciones grandes a la vez en la escena.
+
+### HU-21 · Choque de rayos y teletransportes · Prioridad: Should
+Como usuario, quiero choques de rayos entre el rey y mi party y teletransportes con imágenes residuales, para tener momentos espectaculares.
+
+**Criterios de aceptación**
+- Escenario: choque
+  Dado una party etapa ≥ 3 y un Rayo del rey, Entonces durante 1,5 s los haces se encuentran en un punto y el choque termina a favor de la party con retroceso del rey.
+- Escenario: frecuencia
+  Entonces hay a lo sumo 1 choque a la vez y 20 s entre dos.
+- Escenario: seguridad visual
+  Entonces el choque no genera flash a pantalla completa ni parpadeos de más de 3 por segundo.
+- Escenario: teletransporte
+  Dado un Tempestario con **Combo** etapa ≥ 2, Entonces desaparece y reaparece tras el objetivo en menos de 0,3 s dejando 2-4 imágenes residuales.
+- Escenario: movimiento reducido
+  Entonces no hay choque animado: solo el destello fijo.
+
+### HU-22 · Campamento a la nueva escala · Prioridad: Must
+Como usuario, quiero conservar el campamento de descanso con los héroes a la nueva escala, para no perder lo que ya me gusta.
+
+**Criterios de aceptación**
+- Escenario: composición
+  Entonces el campamento ocupa la franja inferior (unos 112 px), con empalizada y puerta, y se ven hasta 7 parties y «+N descansando».
+- Escenario: actividades
+  Entonces las 8 actividades comunes y las de raza siguen apareciendo, con las poses de sentado, dormir y comer.
+- Escenario: transiciones
+  Entonces entrar y salir por la puerta funciona como en 1.1 (≤ 2,5 s y ≤ 2,8 s).
+- Escenario: legibilidad
+  Entonces los héroes en reposo no tapan la puerta ni las placas.
+- Escenario: temporal
+  Dado una raza no migrada, Entonces descansa con su sprite antiguo ampliado ×2.
+
+### HU-23 · Rendimiento del combate dinámico · Prioridad: Must
+Como usuario, quiero que la pelea vaya fluida, para poder tener la app abierta todo el día.
+
+**Criterios de aceptación**
+- Escenario: fluidez
+  Dado 4 parties completas + 4 vanguardias, rey forma final, 10 secuaces, 2 élites y un choque de rayos, Entonces 30 fps o más.
+- Escenario: efectos reducidos
+  Entonces los efectos de las parties 3.ª en adelante usan una versión reducida (menos chispas, sin imágenes residuales).
+- Escenario: primer dibujo
+  Dado una raza que aparece por primera vez, Entonces no hay un parón mayor de 50 ms.
+- Escenario: pestaña oculta
+  Dado la ventana minimizada, Entonces la animación se pausa y no se acumulan acciones en la cola.
+
+### HU-24 · Migración del resto de razas a 16 bits · Prioridad: Should
+Como usuario, quiero que las 8 razas anteriores tengan el mismo nivel de detalle, para que no haya razas «antiguas».
+
+**Criterios de aceptación**
+- Escenario: completitud
+  Entonces las 8 razas × 3 clases × 3 etapas × paletas A y B cumplen el estilo de 2.4 y tienen su fila de 4.3.
+- Escenario: orden
+  Entonces se migran por pares, por orden de uso en la tabla de asignación.
+- Escenario: sin regresión
+  Entonces mientras se migra no cambian las asignaciones ni las etapas.
+
+## 6. Orden de entrega (v1.2)
+
+1. **Entrega A (MVP v1.2): HU-15, HU-16 (piloto), HU-17 (acciones básicas: Tanteo, Combo, Rayo cargado), HU-18 (solo el rey), HU-22, HU-23.** Lienzo 960×608; Tempestarios etapas 1-2 y Kazgorath redibujados a 16 bits; el campamento a la nueva escala; las demás razas ampliadas ×2. Valida **escala, estilo y sensación de pelea** antes de invertir más arte.
+2. **Entrega B: HU-19 completa.** Tempestarios etapas 3 y 4, transformaciones, gritos, variante B y teletransporte.
+3. **Entrega C: HU-20 (Humanos, Elfos y Enanos) + HU-24 (esos tres).** Las razas del MVP original con su estilo propio.
+4. **Entrega D: HU-18 (secuaces y élites), HU-21.** Enemigos que se mueven, choque de rayos, ataques firma de los otros reyes.
+5. **Entrega E: HU-20 y HU-24 (resto de razas).**
+
+Cada entrega se puede usar sola y la app nunca queda a medias (razas sin migrar se ven ×2).
+
+## 7. Riesgos de producto (v1.2)
+- **Volumen de arte:** ~40 fotogramas por héroe × 27 héroes × etapas × 2 paletas. Se mitiga con piloto primero, capas por etapa y migración por pares.
+- **Rendimiento:** lienzo 4× mayor + más efectos; se mide en la Entrega A antes de seguir.
+- **Saturación visual:** muchas acciones a la vez; cola, límite de 3 acciones grandes y de 4 parties completas.
+- **Fotosensibilidad:** rayos, choques y transformaciones; sin flashes a pantalla completa y máximo 3 parpadeos/s.
+- **Originalidad (alto):** la raza nueva se parece mucho al género de referencia; lista ampliada y revisión visual antes de publicar.
+- **Dependencia de evento:** el reparto por tipo de herramienta depende de que el navegador ya reciba ese dato; hay alternativa cíclica.
+- **Colisión de color con Astrales:** violeta compartido; se resuelve por forma (rayos angulosos frente a órbitas) y se revisa en pantalla.
+
+## 8. Preguntas abiertas para el usuario (propuesta por defecto)
+1. **Escala:** ¿lienzo 960×608 con 4 parties completas (5.ª-8.ª solo vanguardia) y sin cámara móvil? *Propuesta: sí; es la única opción que mantiene la party de 3, el campamento y el rey gigante en una pantalla.*
+2. **Raza nueva:** ¿te gustan el nombre **Tempestarios**, las 4 etapas (Calma Previa, Chispa Viva, Tormenta Desatada, Ojo de la Tormenta) y que sea la raza de `claude`? *Propuesta: sí; la forma final es la serena, con el pelo blanco plata y violeta eléctrico.*
+3. **Primera entrega:** ¿empezamos por Tempestarios (etapas 1-2) y Kazgorath como piloto de estilo, con las demás razas ampliadas ×2 hasta migrarlas? *Propuesta: sí, para validar el estilo con tu raza favorita antes de rehacer las 8.*
+4. **Enemigos golpeando:** ¿quieres que los héroes se vean golpeados (retroceso, bloqueo) aunque nunca pierdan ni caigan? *Propuesta: sí, solo visual, sin derrotas.*
+
+---
+
+# Adendas de contrato (cierre de la v1.2, 2026-11-25)
+
+Cambios respecto a lo escrito en `docs/arena-v12-arquitectura.md` (4.2, 4.3 y 4.11) que el código ya cumple:
+
+- **Evento `reset`** (`rules.reset()`): sin campos. Avisa a `combat/` de que suelte rey, élites, secuaces, parties y efectos. Va después de los `partyToCamp` de cada party retirada.
+- **`enemy` en lugar de `type`**: `minionSpawn` y `eliteSpawn` llevan `enemy` (`'diablillo'`, `'verdugo'`…). Los registros de reglas conservan `type` internamente, pero `combat/` lee `ev.enemy` (con `ev.type` solo como respaldo). El campo `type` de un evento es siempre el nombre del evento.
+- **`stage` en `partyJoin` y `partyEnter`**: etapa de la party en ese momento (1 al entrar por la puerta; la que lleva si vuelve a salir). Sirve para prehornear las tiras de esa etapa. `partyJoin` solo se emite cuando la party empieza a salir, no mientras el grupo se levanta (ver abajo).
+- **`combat.heroViews()`**: lista de héroes visibles `{ name, idx, race, variant, stage, x, y, z, face, w, h, alpha, lite, charge }`. `charge` es el progreso 0..1 de la carga de la acción en curso (0 si no carga). La lista se reutiliza entre llamadas: no se debe guardar.
+- **Contexto de `fx` de raza** (`art/races/<id>.js`, `fx.back(g, c, stage)`, `fx.front(g, c, stage)` y `transformFx(g, c, k, from, to)`): `c = { x, y, w, h, t, lite, face, alpha, idx, variant, charge }`. `x, y` son los pies del héroe (con la altura `z` ya restada); `charge` es el de `heroViews()`.
+- **Geometría final (`config.js`)**: `KING_Y = 408` (los reyes miden hasta 370-380 px y la barra de vida llega a y ≈ 28), `MIN_FEET_Y = 414`, puestos de solo vanguardia `(365,424) (595,424) (170,422) (800,422)`, `FLOOR_CY = 404`, `CIRCLE_CY = 392`. `CAMP_SLOTS[2] = (480, 586)`. `CAMP_SLOTS` es la única tabla de puestos del campamento (`camp/camp.js` y `camp/props.js` la leen).
+- **Del campamento a la batalla**: si el agente tenía un grupo en reposo con puesto, `rules.js` crea la party en estado `wait` con `p.rise` apuntando al grupo, que sigue en `S.camp` mientras `camp.beginRise()` reproduce una pose corta (≈ 0,46 s: se echan hacia delante, se incorporan con un saltito, escalonados 100 ms). Los golpes de esa ventana restan vida a la vez (sin acción visual). Al terminar (`c.rise.end`), el grupo se retira, se emite `partyJoin` con `from: 'camp'` y `heroes`, y después `partyEnter`: los héroes salen andando desde donde estaban hasta la puerta. Con movimiento reducido no hay pose (sale directamente). Si el agente deja de trabajar durante la pose, `camp.endRise()` devuelve al grupo a su actividad y no se emite nada.

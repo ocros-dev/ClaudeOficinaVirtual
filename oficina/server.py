@@ -12,6 +12,7 @@ import json
 import os
 import queue
 import re
+import socket
 import sys
 import threading
 import time
@@ -415,11 +416,22 @@ def start_replay(session_id: str, speed: float) -> int:
 
 
 # ---- SSE ---------------------------------------------------------------------
+CLIENT_QUEUE_MAX = 500   # mensajes pendientes por cliente SSE; si se llena, el cliente está colgado
+
+
+class ClientQueue(queue.Queue):
+    closed = False
+
+
 def broadcast(msg: dict) -> None:
     data = json.dumps(msg, ensure_ascii=False)
     with clients_lock:
         for q in list(clients):
-            q.put(data)
+            try:
+                q.put_nowait(data)
+            except queue.Full:   # cliente que no lee: se le suelta para no acumular memoria
+                q.closed = True
+                clients.discard(q)
 
 
 # ---- HTTP --------------------------------------------------------------------
@@ -427,8 +439,19 @@ MIME = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=ut
         ".png": "image/png", ".json": "application/json", ".svg": "image/svg+xml", ".ico": "image/x-icon"}
 
 
+# Errores normales de un cliente que se va (cierra el navegador, corta la red, se agota el tiempo).
+CLIENT_GONE = (ConnectionError, socket.timeout, TimeoutError)   # ConnectionError incluye Reset/Aborted/BrokenPipe
+
+
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
+    timeout = 60   # lectura/escritura del socket: una conexión muda no deja el hilo colgado
+
+    def handle(self) -> None:
+        try:
+            super().handle()
+        except CLIENT_GONE:
+            self.close_connection = True
 
     def log_message(self, *args):  # silencio
         pass
@@ -443,8 +466,15 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         url = urlparse(self.path)
-        length = int(self.headers.get("Content-Length") or 0)
-        body = self.rfile.read(min(length, 1_000_000)) if length else b""
+        try:
+            length = max(0, int(self.headers.get("Content-Length") or 0))
+        except ValueError:
+            self.close_connection = True
+            return self.send_json(400, {"error": "Content-Length inválido"})
+        if length > 1_000_000:   # no se lee el resto: se cierra la conexión tras responder
+            self.close_connection = True
+            return self.send_json(413, {"error": "cuerpo demasiado grande"})
+        body = self.rfile.read(length) if length else b""
         if url.path == "/event":
             if DEBUG:
                 with open(Path.cwd() / "events.log", "ab") as f:
@@ -452,7 +482,7 @@ class Handler(BaseHTTPRequestHandler):
             if not replay:   # durante una repetición se ignoran los eventos en vivo
                 try:
                     handle_hook(json.loads(body or b"{}"))
-                except (ValueError, KeyError, TypeError) as e:
+                except (ValueError, KeyError, TypeError, AttributeError) as e:
                     print("Evento inválido:", e)
             self.send_response(204)
             self.send_header("Content-Length", "0")
@@ -547,6 +577,16 @@ class Handler(BaseHTTPRequestHandler):
 class Server(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = False
+
+    def handle_error(self, request, client_address) -> None:
+        # Un cliente que se va no es un fallo del servidor: sin traza. Lo demás, una línea de resumen.
+        exc = sys.exc_info()[1]
+        if isinstance(exc, CLIENT_GONE):
+            return
+        print(f"Error atendiendo {client_address[0]}: {type(exc).__name__}: {exc}", file=sys.stderr)
+        if DEBUG:
+            import traceback
+            traceback.print_exc()
 
 
 def start(port: int = 3017) -> tuple[Server, threading.Event]:

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visor de arte 16 bits · Oficina Virtual</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; font: 14px/1.4 system-ui, sans-serif; background: #14121c; color: #e6e2f0; }
+  header { padding: 10px 16px; background: #1e1a2c; border-bottom: 1px solid #3a3450; }
+  h1 { margin: 0; font-size: 16px; }
+  main { display: grid; grid-template-columns: minmax(280px, 340px) 1fr; gap: 16px; padding: 16px; }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
+  fieldset { border: 1px solid #3a3450; border-radius: 6px; margin: 0 0 12px; padding: 8px 12px; }
+  legend { padding: 0 6px; color: #b8b0d8; }
+  label { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 4px 0; }
+  [hidden] { display: none !important; }
+  select, input[type=range], button { font: inherit; color: inherit; background: #26213a; border: 1px solid #4a4268; border-radius: 4px; padding: 3px 6px; }
+  button { cursor: pointer; }
+  button:hover, button:focus-visible { background: #36305a; outline: 2px solid #8a7ad8; outline-offset: 1px; }
+  #escena { background: #46705a; image-rendering: pixelated; max-width: 100%; border: 1px solid #3a3450; }
+  #galeria { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  #galeria figure { margin: 0; text-align: center; font-size: 12px; color: #b8b0d8; }
+  #galeria canvas { background: #46705a; image-rendering: pixelated; display: block; }
+  table { border-collapse: collapse; width: 100%; font-size: 12px; }
+  td, th { border-bottom: 1px solid #3a3450; padding: 2px 6px; text-align: left; }
+  .ok { color: #7adf8a; } .mal { color: #ff7a7a; font-weight: 600; }
+  #errores:not(:empty) { background: #4a1820; padding: 8px; border-radius: 4px; white-space: pre-wrap; }
+  pre { margin: 0; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<header><h1>Visor de arte 16 bits (kit16) · maniquí, razas, reyes, élites y secuaces · comprobaciones de estilo y de presupuesto</h1></header>
+<main>
+  <section aria-label="Controles">
+    <fieldset><legend>Personaje</legend>
+      <label>Ver <select id="modo"><option value="heroe">Héroe (raza)</option><option value="rey">Rey Demonio</option><option value="elite">Élite</option><option value="minion">Secuaz</option></select></label>
+      <label data-modo="heroe">Raza <select id="raza"></select></label>
+      <label data-modo="heroe">Clase <select id="clase"></select></label>
+      <label data-modo="heroe">Etapa <select id="etapa"><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
+      <label data-modo="heroe">Variante <select id="variante"><option value="0">A</option><option value="1">B</option></select></label>
+      <label data-modo="rey enemigo">Rey <select id="rey"></select></label>
+      <label data-modo="rey">Forma <select id="forma"><option>1</option><option>2</option><option>3</option></select></label>
+      <label data-modo="enemigo">Tipo <select id="tipo"></select></label>
+      <label>Animación <select id="anim"></select></label>
+    </fieldset>
+    <fieldset><legend>Reproducción</legend>
+      <label><span>Zoom <output id="zoomv">4</output>×</span> <input id="zoom" type="range" min="1" max="6" value="4"></label>
+      <label><span>Velocidad <output id="velv">8</output> fps</span> <input id="vel" type="range" min="1" max="16" value="8"></label>
+      <div style="display:flex; gap:6px; flex-wrap:wrap">
+        <button id="play" type="button" aria-pressed="true">Pausar</button>
+        <button id="prev" type="button">&lt; Fotograma</button>
+        <button id="next" type="button">Fotograma &gt;</button>
+      </div>
+      <label><span>Articulaciones y anclas</span> <input id="ov" type="checkbox"></label>
+      <label><span>Reflejar (mirar a la izquierda)</span> <input id="flip" type="checkbox"></label>
+    </fieldset>
+    <fieldset><legend>Comprobaciones</legend>
+      <button id="check" type="button">Comprobar lo seleccionado</button>
+      <button id="checkAll" type="button">Comprobar todo (cuerpos, razas, reyes, enemigos)</button>
+    </fieldset>
+    <fieldset><legend>Medidas</legend><pre id="info" aria-live="polite"></pre></fieldset>
+  </section>
+  <section aria-label="Vista">
+    <canvas id="escena" width="640" height="440" aria-label="Sprite animado"></canvas>
+    <div id="estado" role="status"></div>
+    <h2 style="font-size:14px">Maniquí: los 6 tipos de cuerpo (animación elegida)</h2>
+    <div id="galeria"></div>
+    <h2 style="font-size:14px">Resultados</h2>
+    <div id="errores" role="alert"></div>
+    <table id="res"><thead><tr><th>Comprobación</th><th>Resultado</th><th>Detalle</th></tr></thead><tbody></tbody></table>
+  </section>
+</main>
+<script>
+  // Los errores de carga también se muestran en la página (y quedan en window.__errores para las pruebas)
+  window.__errores = [];
+  const mostrar = m => { window.__errores.push(m); const e = document.getElementById('errores'); if (e) e.textContent += m + '\n'; };
+  addEventListener('error', ev => mostrar('Error: ' + ev.message + ' (' + (ev.filename || '').split('/').pop() + ':' + ev.lineno + ')'));
+  addEventListener('unhandledrejection', ev => mostrar('Promesa rechazada: ' + (ev.reason && ev.reason.stack || ev.reason)));
+</script>
+<script type="module" src="./arte16.js"></script>
+</body>
+</html>

@@ -36,10 +36,14 @@ Sin entorno gráfico se puede arrancar solo el servidor (`from oficina import se
 - `oficina/hooks.py`: instala y quita los hooks en `~/.claude/settings.json`.
 - `public/js/main.js`: bucle principal, movimiento, dibujo y panel.
 - `public/js/map.js`: mapa, salas, escritorios y dibujo de la oficina.
-- `public/js/arena.js`: tema «arena»: batalla de las parties contra el Rey Demonio, escenario y HUD (constantes en `CFG`). Especificación en `docs/arena-spec.md`.
-- `public/js/camp.js`: zona de descanso de la arena y actividades de las parties.
-- `public/js/heroes.js`: razas, clases y etapas de transformación de los héroes.
-- `public/js/bosses.js`: Reyes Demonio, secuaces y demonios élite.
-- `public/js/fx.js`: efectos compartidos (auras, rayos, partículas) y `prefers-reduced-motion`.
+- `public/js/arena/`: tema «arena» (lienzo 960×608, estilo 16 bits). Especificación en `docs/arena-spec.md`, arquitectura en `docs/arena-v12-arquitectura.md` y guía de arte en `docs/arena-estilo-16bits.md`.
+  - `index.js` (fachada), `config.js` (constantes y puestos), `races.js` (razas, reyes y asignación rol→raza), `rules.js` (vida, etapas, formas y eventos), `util.js`.
+  - `art/kit16/`: kit para dibujar sprites 16 bits en código (esqueleto, poses, rampas de 5 tonos, contorno, horneado y caché). `art/registry.js` sirve los fotogramas.
+  - `art/races/<raza>.js`, `art/kings/<rey>.js` y `art/enemies/`: el arte de cada raza, rey, secuaz y élite.
+  - `combat/`: motor de acciones (`actions.js`, `director.js`, `party.js`, IA del rey y enemigos, choque de rayos); `combat/moves/<raza>.js` y `combat/kings/<rey>.js` definen cómo pelea cada uno.
+  - `render/`: escena, HUD, efectos (`vfx.js`, que guarda la bandera de movimiento reducido) y fondo.
+  - `camp/`: zona de descanso, actividades y mobiliario.
+- `public/dev/arte16.html`: visor del arte con comprobaciones automáticas (`?auto=1`). `python tools/check_arena.py` valida las reglas de arquitectura.
+- `python demo.py arena`: simula 9 agentes, uno por raza, para probar la arena.
 - `public/js/sprites.js` y `public/js/editor.js`: personajes y editor de aspecto.
 - Los personajes y villanos deben ser diseños originales: no copies personajes con derechos de autor.
